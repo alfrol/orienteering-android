@@ -1,0 +1,36 @@
+<resources>
+    <string name="app_name">GPS Sport Map</string>
+
+    <string name="title_welcome">Welcome</string>
+    <string name="title_login">Login</string>
+    <string name="title_register">Register</string>
+
+    <string name="subtitle_new_session">New Session</string>
+    <string name="subtitle_sessions">Sessions</string>
+
+    <string name="text_create_account">Don\'t have an account?</string>
+    <string name="text_login_instead">Already a member?</string>
+    <string name="text_login">Login</string>
+    <string name="text_register">Register</string>
+    <string name="text_new_session">Start a new training session</string>
+    <string name="text_sessions">See and edit your previous sessions</string>
+    <string name="text_location_permission_rationale">This application requires location access</string>
+    <string name="text_distance">Distance</string>
+    <string name="text_duration">Duration</string>
+    <string name="text_pace">Pace</string>
+
+    <string name="prompt_first_name">First name</string>
+    <string name="prompt_last_name">Last name</string>
+    <string name="prompt_email">Email</string>
+    <string name="prompt_password">Password</string>
+    <string name="prompt_password_confirmation">Password confirmation</string>
+
+    <string name="error_invalid_email">Invalid email</string>
+    <string name="error_empty_password">Password must not be empty nor contain whitespaces</string>
+    <string name="error_login_failed">Could not log you in</string>
+    <string name="error_empty_required_field">This field is required</string>
+    <string name="error_incorrect_password">"Password does not match the criteria:\n    * First letter must be uppercase\n    * Must only contain characters A-Z, a-z, 0-9 and _\n    * Length must be at least 6 characters\n    "</string>
+    <string name="error_password_match">Passwords do not match</string>
+    <string name="error_registration_failed">Could not register a new account</string>
+    <string name="error_unexpected">Unexpected error</string>
+</resources>

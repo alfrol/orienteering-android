@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:map="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".ui.fragments.SessionFragment">
+
+    <fragment
+        android:id="@+id/map"
+        android:name="com.google.android.gms.maps.SupportMapFragment"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        map:mapType="normal"
+        map:uiCompass="false" />
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fab_session_start"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|end"
+        android:layout_marginTop="24dp"
+        android:layout_marginEnd="24dp"
+        android:clickable="true"
+        android:focusable="true"
+        android:src="@drawable/ic_start"
+        android:tint="@color/white"
+        app:borderWidth="0dp"
+        app:rippleColor="@color/grey_transparent"
+        app:tint="@color/white" />
+
+    <View
+        android:id="@+id/divider1"
+        android:layout_width="16dp"
+        android:layout_height="16dp"
+        android:layout_gravity="bottom|center_horizontal"
+        app:layout_anchor="@id/fab_session_start"
+        app:layout_anchorGravity="bottom|center_horizontal" />
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fab_settings"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center_horizontal"
+        android:clickable="true"
+        android:focusable="true"
+        android:src="@drawable/ic_settings"
+        android:tint="@color/white"
+        app:backgroundTint="@color/light_grey"
+        app:borderWidth="0dp"
+        app:layout_anchor="@id/divider1"
+        app:layout_anchorGravity="bottom|center_horizontal"
+        app:rippleColor="@color/grey_transparent"
+        app:tint="@color/dark_grey" />
+
+    <View
+        android:id="@+id/divider2"
+        android:layout_width="16dp"
+        android:layout_height="8dp"
+        android:layout_gravity="bottom|center_horizontal"
+        app:layout_anchor="@id/fab_settings"
+        app:layout_anchorGravity="bottom|center_horizontal" />
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fab_center_map_view"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center_horizontal"
+        android:clickable="true"
+        android:focusable="true"
+        android:src="@drawable/ic_my_location"
+        android:tint="@color/white"
+        android:visibility="invisible"
+        app:backgroundTint="@color/primary"
+        app:borderWidth="0dp"
+        app:layout_anchor="@id/divider2"
+        app:layout_anchorGravity="bottom|center_horizontal"
+        app:rippleColor="@color/grey_transparent"
+        app:tint="@color/white" />
+
+    <View
+        android:id="@+id/divider3"
+        android:layout_width="16dp"
+        android:layout_height="8dp"
+        android:layout_gravity="bottom|center_horizontal"
+        app:layout_anchor="@id/fab_center_map_view"
+        app:layout_anchorGravity="bottom|center_horizontal" />
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fab_reset_map_view"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center_horizontal"
+        android:clickable="true"
+        android:focusable="true"
+        android:src="@drawable/ic_map_north"
+        android:tint="@color/white"
+        android:visibility="invisible"
+        app:backgroundTint="@color/primary"
+        app:borderWidth="0dp"
+        app:layout_anchor="@id/divider3"
+        app:layout_anchorGravity="bottom|center_horizontal"
+        app:rippleColor="@color/grey_transparent"
+        app:tint="@color/white" />
+
+    <View
+        android:id="@+id/divider4"
+        android:layout_width="16dp"
+        android:layout_height="8dp"
+        android:layout_gravity="bottom|center_horizontal"
+        app:layout_anchor="@id/fab_reset_map_view"
+        app:layout_anchorGravity="bottom|center_horizontal" />
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fab_toggle_compass"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center_horizontal"
+        android:clickable="true"
+        android:focusable="true"
+        android:src="@drawable/ic_compass_on"
+        android:tint="@color/white"
+        android:visibility="invisible"
+        app:backgroundTint="@color/primary"
+        app:borderWidth="0dp"
+        app:layout_anchor="@id/divider4"
+        app:layout_anchorGravity="bottom|center_horizontal"
+        app:rippleColor="@color/grey_transparent"
+        app:tint="@color/white" />
+
+    <ImageView
+        android:id="@+id/image_view_compass"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|start"
+        android:layout_marginStart="24dp"
+        android:layout_marginTop="24dp"
+        android:src="@drawable/ic_compass"
+        android:visibility="invisible" />
+
+    <fragment
+        android:id="@+id/session_data"
+        android:name="ee.taltech.alfrol.hw02.ui.fragments.SessionDataFragment"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:behavior_hideable="true"
+        app:behavior_peekHeight="120dp"
+        app:layout_behavior="com.google.android.material.bottomsheet.BottomSheetBehavior" />
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>
+

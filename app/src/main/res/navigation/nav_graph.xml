@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/menuFragment">
+
+    <fragment
+        android:id="@+id/menuFragment"
+        android:name="ee.taltech.alfrol.hw02.ui.fragments.MenuFragment"
+        android:label="MenuFragment" >
+        <action
+            android:id="@+id/action_authenticate"
+            app:destination="@id/navigation" />
+        <action
+            android:id="@+id/action_start_session"
+            app:destination="@id/sessionFragment" />
+    </fragment>
+    <navigation android:id="@+id/navigation"
+        app:startDestination="@id/welcomeFragment">
+        <fragment
+            android:id="@+id/registerFragment"
+            android:name="ee.taltech.alfrol.hw02.ui.fragments.RegistrationFragment"
+            android:label="RegisterFragment" >
+            <action
+                android:id="@+id/action_complete_auth"
+                app:destination="@id/welcomeFragment"
+                app:popUpTo="@id/welcomeFragment" />
+        </fragment>
+        <fragment
+            android:id="@+id/loginFragment"
+            android:name="ee.taltech.alfrol.hw02.ui.fragments.LoginFragment"
+            android:label="LoginFragment" >
+            <action
+                android:id="@+id/action_register"
+                app:destination="@id/registerFragment" />
+            <argument
+                android:name="jumpToRegistration"
+                app:argType="boolean"
+                android:defaultValue="false" />
+        </fragment>
+        <fragment
+            android:id="@+id/welcomeFragment"
+            android:name="ee.taltech.alfrol.hw02.ui.fragments.WelcomeFragment"
+            android:label="WelcomeFragment" >
+            <action
+                android:id="@+id/action_login"
+                app:destination="@id/loginFragment" />
+        </fragment>
+    </navigation>
+    <fragment
+        android:id="@+id/sessionFragment"
+        android:name="ee.taltech.alfrol.hw02.ui.fragments.SessionFragment"
+        android:label="fragment_session"
+        tools:layout="@layout/fragment_session" />
+</navigation>
