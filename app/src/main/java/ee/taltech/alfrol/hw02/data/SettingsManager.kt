@@ -78,6 +78,15 @@ class SettingsManager @Inject constructor(@ApplicationContext context: Context) 
     }
 
     /**
+     * Remove the saved session id from preferences.
+     */
+    suspend fun removeSessionId() {
+        datastore.edit { preferences ->
+            preferences.remove(SESSION_ID_KEY)
+        }
+    }
+
+    /**
      * Get the id of the current logged in user.
      * Can return Flow of null if there is no logged in user.
      */

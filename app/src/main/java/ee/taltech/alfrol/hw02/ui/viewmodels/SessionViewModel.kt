@@ -83,8 +83,15 @@ class SessionViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Stop the currently running session.
+     */
     fun stopSession() {
         _sessionState.value = SessionState()
+
+        viewModelScope.launch {
+            settingsManager.removeSessionId()
+        }
     }
 
     /**
