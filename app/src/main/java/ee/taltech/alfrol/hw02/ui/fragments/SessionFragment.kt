@@ -15,7 +15,6 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
-import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import ee.taltech.alfrol.hw02.R
 import ee.taltech.alfrol.hw02.databinding.FragmentSessionBinding
@@ -75,13 +74,15 @@ class SessionFragment : Fragment(R.layout.fragment_session),
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        val mapFragment = childFragmentManager.findFragmentById(R.id.map) as SupportMapFragment?
-        mapFragment?.getMapAsync(this)
+        //val mapFragment = childFragmentManager.findFragmentById(R.id.map) as SupportMapFragment?
+        //mapFragment?.getMapAsync(this)
+        with(binding) {
+            map.onCreate(savedInstanceState)
+            map.getMapAsync(this@SessionFragment)
+        }
 
         // Instantiate the session data fragment as bottom sheet
-        val sessionDataFragment =
-            childFragmentManager.findFragmentById(R.id.session_data) as SessionDataFragment
-        bottomSheetBehavior = BottomSheetBehavior.from(sessionDataFragment.requireView())
+        bottomSheetBehavior = BottomSheetBehavior.from(binding.sessionData)
         bottomSheetBehavior.state = BottomSheetBehavior.STATE_COLLAPSED
 
         sessionViewModel.sessionState.observe(viewLifecycleOwner, { sessionState ->
@@ -152,20 +153,31 @@ class SessionFragment : Fragment(R.layout.fragment_session),
         }
     }
 
-    override fun onPause() {
-        super.onPause()
+    override fun onResume() {
+        super.onResume()
+        binding.map.onResume()
+
         if (sessionViewModel.isCompassEnabled()) {
-            compassListener.stopListening()
+            compassListener.startListening()
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        binding.map.onStart()
     }
 
     @SuppressLint("MissingPermission")
     override fun onMapReady(googleMap: GoogleMap) {
         map = googleMap
 
+        // Set up the map (ui settings, enable my location etc)
         if (hasLocationPermission()) {
             map?.isMyLocationEnabled = true
-            map?.uiSettings?.isMyLocationButtonEnabled = false
+            with(map?.uiSettings) {
+                this?.isMyLocationButtonEnabled = false
+                this?.isCompassEnabled = false
+            }
         }
 
         map?.setOnMapClickListener {
@@ -216,15 +228,33 @@ class SessionFragment : Fragment(R.layout.fragment_session),
         }
     }
 
-    override fun onResume() {
-        super.onResume()
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        binding.map.onSaveInstanceState(outState)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        binding.map.onPause()
+
         if (sessionViewModel.isCompassEnabled()) {
-            compassListener.startListening()
+            compassListener.stopListening()
         }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        binding.map.onStop()
+    }
+
+    override fun onLowMemory() {
+        super.onLowMemory()
+        binding.map.onLowMemory()
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
+        binding.map.onDestroy()
         _binding = null
     }
 
@@ -269,7 +299,7 @@ class SessionFragment : Fragment(R.layout.fragment_session),
         )
 
     /**
-     * Toggle the [SessionDataFragment] bottom sheet.
+     * Toggle the session data bottom sheet.
      */
     private fun toggleSessionData() {
         bottomSheetBehavior.apply {
