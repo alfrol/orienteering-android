@@ -13,8 +13,8 @@ import ee.taltech.alfrol.hw02.R
 import ee.taltech.alfrol.hw02.api.RestHandler
 import ee.taltech.alfrol.hw02.data.SettingsManager
 import ee.taltech.alfrol.hw02.data.dao.UserDao
-import ee.taltech.alfrol.hw02.ui.other.AuthenticationResult
-import ee.taltech.alfrol.hw02.ui.other.LoginFormState
+import ee.taltech.alfrol.hw02.ui.states.AuthenticationResult
+import ee.taltech.alfrol.hw02.ui.states.LoginFormState
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.json.JSONObject
