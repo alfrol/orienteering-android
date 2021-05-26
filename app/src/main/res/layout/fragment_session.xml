@@ -7,6 +7,15 @@
     android:layout_height="match_parent"
     tools:context=".ui.fragments.SessionFragment">
 
+    <ProgressBar
+        android:id="@+id/loading_spinner"
+        style="?android:attr/progressBarStyle"
+        android:layout_width="100dp"
+        android:layout_height="100dp"
+        android:layout_gravity="center"
+        android:elevation="1dp"
+        android:visibility="gone" />
+
     <com.google.android.gms.maps.MapView
         android:id="@+id/map_view"
         android:layout_width="match_parent"

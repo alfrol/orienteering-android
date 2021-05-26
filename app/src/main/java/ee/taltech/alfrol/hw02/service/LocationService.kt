@@ -12,6 +12,7 @@ import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavDeepLinkBuilder
+import com.android.volley.Request
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationResult
@@ -20,18 +21,28 @@ import com.google.android.gms.maps.model.LatLng
 import dagger.hilt.android.AndroidEntryPoint
 import ee.taltech.alfrol.hw02.C
 import ee.taltech.alfrol.hw02.R
+import ee.taltech.alfrol.hw02.api.AuthorizedJsonObjectRequest
+import ee.taltech.alfrol.hw02.api.RestHandler
 import ee.taltech.alfrol.hw02.data.SettingsManager
+import ee.taltech.alfrol.hw02.data.dao.SessionDao
+import ee.taltech.alfrol.hw02.data.model.Session
 import ee.taltech.alfrol.hw02.ui.fragments.SessionFragment
 import ee.taltech.alfrol.hw02.ui.utils.UIUtils
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import org.json.JSONObject
 import javax.inject.Inject
 
 @AndroidEntryPoint
 class LocationService : LifecycleService() {
 
     companion object {
-        val points = MutableLiveData<MutableList<LatLng>>(mutableListOf())
+        val isRunning = MutableLiveData(false)
+        val pathPoints = MutableLiveData<MutableList<LatLng>>(mutableListOf())
         val currentLocation = MutableLiveData<LatLng>()
+        val duration = MutableLiveData(0L)
 
         private const val MAX_RETRIES = 3
     }
@@ -39,8 +50,16 @@ class LocationService : LifecycleService() {
     @Inject
     lateinit var settingsManager: SettingsManager
 
+    @Inject
+    lateinit var sessionDao: SessionDao
+
+    @Inject
+    lateinit var restHandler: RestHandler
+
     private lateinit var fusedLocationProviderClient: FusedLocationProviderClient
     private lateinit var notificationManager: NotificationManager
+
+    private val durationMillis = MutableLiveData(0L)
 
     override fun onCreate() {
         super.onCreate()
@@ -60,13 +79,59 @@ class LocationService : LifecycleService() {
     }
 
     private fun startService() {
+        val session: Session
+
+        runBlocking {
+            session = Session()
+            sessionDao.insert(session)
+        }
+        saveSessionToBackend(session)
+
+        isRunning.value = true
         startForeground(C.NOTIFICATION_ID, createNotification())
         requestLocationUpdates()
     }
 
     private fun stopService() {
+        lifecycleScope.launchWhenCreated {
+            settingsManager.removeSessionId()
+        }
+
+        isRunning.value = false
         stopSelf()
         fusedLocationProviderClient.removeLocationUpdates(callback)
+    }
+
+    /**
+     * Try to save the new session to the backend.
+     * Doesn't do anything on failure.
+     */
+    private fun saveSessionToBackend(session: Session) {
+        lifecycleScope.launchWhenCreated {
+            val token = settingsManager.token.firstOrNull() ?: return@launchWhenCreated
+
+            val requestBody = JSONObject()
+            requestBody.put(C.JSON_NAME_KEY, session.name)
+            requestBody.put(C.JSON_DESCRIPTION_KEY, session.description)
+            requestBody.put(C.JSON_RECORDED_AT_KEY, session.recordedAtIso)
+            requestBody.put(C.JSON_PACE_MIN_KEY, 420)
+            requestBody.put(C.JSON_PACE_MAX_KEY, 600)
+
+            val sessionRequest = AuthorizedJsonObjectRequest(
+                Request.Method.POST, C.API_SESSIONS_URL, requestBody,
+                { response ->
+                    val id = response.getString(C.JSON_ID_KEY)
+
+                    // Save backend session id for later use
+                    lifecycleScope.launch {
+                        settingsManager.saveSessionId(id)
+                    }
+                },
+                {},
+                token
+            )
+            restHandler.addRequest(sessionRequest)
+        }
     }
 
     /**
@@ -114,18 +179,21 @@ class LocationService : LifecycleService() {
     @SuppressLint("MissingPermission")
     private fun requestLocationUpdates() {
         if (UIUtils.hasLocationPermission(this)) {
-            lifecycleScope.launchWhenCreated {
-                val interval = settingsManager.locationUpdateInterval.first()
-                val fastestInterval = settingsManager.locationUpdateFastestInterval.first()
+            val interval: Long
+            val fastestInterval: Long
 
-                val request = UIUtils.getLocationRequest(interval, fastestInterval)
-
-                fusedLocationProviderClient.requestLocationUpdates(
-                    request,
-                    callback,
-                    Looper.getMainLooper()
-                )
+            runBlocking {
+                interval = settingsManager.locationUpdateInterval.first()
+                fastestInterval = settingsManager.locationUpdateFastestInterval.first()
             }
+
+            val request = UIUtils.getLocationRequest(interval, fastestInterval)
+
+            fusedLocationProviderClient.requestLocationUpdates(
+                request,
+                callback,
+                Looper.getMainLooper()
+            )
         }
     }
 
@@ -135,9 +203,9 @@ class LocationService : LifecycleService() {
     private fun addPoint(location: Location?) {
         location?.let {
             val latLng = LatLng(it.latitude, it.longitude)
-            points.value?.apply {
+            pathPoints.value?.apply {
                 add(latLng)
-                points.value = this
+                pathPoints.value = this
             }
         }
     }
