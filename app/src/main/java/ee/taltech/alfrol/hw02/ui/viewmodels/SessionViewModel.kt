@@ -1,10 +1,10 @@
 package ee.taltech.alfrol.hw02.ui.viewmodels
 
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
+import android.app.Application
+import android.content.Intent
+import androidx.lifecycle.*
 import com.android.volley.Request
+import com.google.android.gms.maps.model.LatLng
 import dagger.hilt.android.lifecycle.HiltViewModel
 import ee.taltech.alfrol.hw02.C
 import ee.taltech.alfrol.hw02.R
@@ -13,6 +13,7 @@ import ee.taltech.alfrol.hw02.api.RestHandler
 import ee.taltech.alfrol.hw02.data.SettingsManager
 import ee.taltech.alfrol.hw02.data.dao.SessionDao
 import ee.taltech.alfrol.hw02.data.model.Session
+import ee.taltech.alfrol.hw02.service.LocationService
 import ee.taltech.alfrol.hw02.ui.states.CompassState
 import ee.taltech.alfrol.hw02.ui.states.SessionState
 import kotlinx.coroutines.flow.firstOrNull
@@ -22,16 +23,34 @@ import javax.inject.Inject
 
 @HiltViewModel
 class SessionViewModel @Inject constructor(
+    private val app: Application,
     private val sessionDao: SessionDao,
     private val restHandler: RestHandler,
     private val settingsManager: SettingsManager
-) : ViewModel() {
+) : AndroidViewModel(app) {
+
+    companion object {
+        private const val OBSERVE_LOCATION_UPDATES = "LOCATION_UPDATES"
+        private const val OBSERVE_CURRENT_LOCATION = "CURRENT_LOCATION"
+    }
 
     private var _sessionState = MutableLiveData<SessionState>()
     val sessionState: LiveData<SessionState> = _sessionState
 
+    private var _locationState = MutableLiveData<MutableList<LatLng>>(mutableListOf())
+    val locationState: LiveData<MutableList<LatLng>> = _locationState
+
+    private var _currentLocation = MutableLiveData<LatLng>()
+    val currentLocation: LiveData<LatLng> = _currentLocation
+
     private var _compassState = MutableLiveData<CompassState>()
     val compassState: LiveData<CompassState> = _compassState
+
+    override fun onCleared() {
+        stopObserving(OBSERVE_CURRENT_LOCATION)
+        stopObserving(OBSERVE_LOCATION_UPDATES)
+        super.onCleared()
+    }
 
     /**
      * Start a new session.
@@ -55,6 +74,8 @@ class SessionViewModel @Inject constructor(
                     buttonIcon = R.drawable.ic_stop
                 )
             )
+
+            startLocationService(C.ACTION_START_SERVICE, OBSERVE_LOCATION_UPDATES)
             saveSessionToBackend(session)
         }
     }
@@ -63,12 +84,16 @@ class SessionViewModel @Inject constructor(
      * Stop the currently running session.
      */
     fun stopSession() {
+        startLocationService(C.ACTION_STOP_SERVICE, OBSERVE_LOCATION_UPDATES)
         _sessionState.value = SessionState()
 
         viewModelScope.launch {
             settingsManager.removeSessionId()
         }
     }
+
+    fun getCurrentLocation() =
+        startLocationService(C.ACTION_GET_CURRENT_LOCATION, OBSERVE_CURRENT_LOCATION)
 
     /**
      * Check whether there is a session that is currently running.
@@ -118,5 +143,68 @@ class SessionViewModel @Inject constructor(
             token
         )
         restHandler.addRequest(sessionRequest)
+    }
+
+    /**
+     * Start (or stop) the [LocationService].
+     *
+     * @param action One of the
+     * [C.ACTION_START_SERVICE],
+     * [C.ACTION_STOP_SERVICE] or
+     * [C.ACTION_GET_CURRENT_LOCATION].
+     */
+    private fun startLocationService(action: String, which: String) =
+        Intent(app.applicationContext, LocationService::class.java).also {
+            it.action = action
+            app.applicationContext.startService(it)
+
+            when (action) {
+                in listOf(C.ACTION_START_SERVICE, C.ACTION_GET_CURRENT_LOCATION) -> startObserving(
+                    which
+                )
+                C.ACTION_STOP_SERVICE -> stopObserving(which)
+            }
+        }
+
+    /**
+     * Register an observer for [LocationService.points] or [LocationService.currentLocation].
+     *
+     * @param which Which livedata to start observing.
+     */
+    private fun startObserving(which: String) {
+        when (which) {
+            OBSERVE_LOCATION_UPDATES -> LocationService.points.observeForever(locationObserver)
+            OBSERVE_CURRENT_LOCATION -> LocationService.currentLocation.observeForever(
+                currentLocationObserver
+            )
+        }
+    }
+
+    /**
+     * Unregister the observer for [LocationService.points] or [LocationService.currentLocation].
+     *
+     * @param which From which livedata to remove the observer.
+     */
+    private fun stopObserving(which: String) {
+        when (which) {
+            OBSERVE_LOCATION_UPDATES -> LocationService.points.removeObserver(locationObserver)
+            OBSERVE_CURRENT_LOCATION -> LocationService.currentLocation.removeObserver(
+                currentLocationObserver
+            )
+        }
+    }
+
+    /**
+     * An observer for changes in [LocationService.points].
+     */
+    private val locationObserver = Observer<MutableList<LatLng>> { points ->
+        _locationState.value = points
+    }
+
+    /**
+     * An observer for changes in [LocationService.currentLocation].
+     */
+    private val currentLocationObserver = Observer<LatLng> { location ->
+        _currentLocation.value = location
     }
 }
