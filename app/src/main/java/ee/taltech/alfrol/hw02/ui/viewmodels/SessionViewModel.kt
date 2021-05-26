@@ -37,8 +37,8 @@ class SessionViewModel @Inject constructor(
     private var _sessionState = MutableLiveData<SessionState>()
     val sessionState: LiveData<SessionState> = _sessionState
 
-    private var _locationState = MutableLiveData<MutableList<LatLng>>(mutableListOf())
-    val locationState: LiveData<MutableList<LatLng>> = _locationState
+    private var _pathPoints = MutableLiveData<MutableList<LatLng>>(mutableListOf())
+    val pathPoints: LiveData<MutableList<LatLng>> = _pathPoints
 
     private var _currentLocation = MutableLiveData<LatLng>()
     val currentLocation: LiveData<LatLng> = _currentLocation
@@ -221,7 +221,7 @@ class SessionViewModel @Inject constructor(
      * An observer for changes in [LocationService.points].
      */
     private val locationObserver = Observer<MutableList<LatLng>> { points ->
-        _locationState.value = points
+        _pathPoints.value = points
     }
 
     /**

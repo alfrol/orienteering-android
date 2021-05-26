@@ -126,7 +126,7 @@ class SessionFragment : Fragment(R.layout.fragment_session),
         }
 
         sessionViewModel.sessionState.observe(viewLifecycleOwner, sessionStateObserve)
-        sessionViewModel.locationState.observe(viewLifecycleOwner, locationStateObserver)
+        sessionViewModel.pathPoints.observe(viewLifecycleOwner, pathPointsObserver)
         sessionViewModel.currentLocation.observe(viewLifecycleOwner, currentLocationObserver)
         sessionViewModel.compassState.observe(viewLifecycleOwner, compassStateObserver)
         sessionViewModel.checkpoints.observe(viewLifecycleOwner, checkpointsObserver)
@@ -288,7 +288,7 @@ class SessionFragment : Fragment(R.layout.fragment_session),
     /**
      * Observer for changes in the location points.
      */
-    private val locationStateObserver = Observer<MutableList<LatLng>> { locationState ->
+    private val pathPointsObserver = Observer<MutableList<LatLng>> { locationState ->
         if (locationState == null) {
             return@Observer
         }
