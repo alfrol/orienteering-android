@@ -68,6 +68,7 @@ dependencies {
     implementation "androidx.annotation:annotation:$annotation_version"
     implementation "androidx.lifecycle:lifecycle-livedata-ktx:$viewmodel_version"
     implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:$viewmodel_version"
+    implementation "androidx.lifecycle:lifecycle-service:$viewmodel_version"
 
     // Room
     implementation "androidx.room:room-runtime:$room_version"
