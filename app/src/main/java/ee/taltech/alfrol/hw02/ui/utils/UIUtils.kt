@@ -1,14 +1,13 @@
 package ee.taltech.alfrol.hw02.ui.utils
 
+import android.Manifest
 import android.content.Context
 import android.text.Editable
 import android.text.TextWatcher
 import android.widget.Toast
 import androidx.annotation.StringRes
-import java.time.Instant
-import java.time.OffsetDateTime
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
+import com.google.android.gms.location.LocationRequest
+import pub.devrel.easypermissions.EasyPermissions
 
 /**
  * A collection of utility functions for operating with the UI.
@@ -41,6 +40,23 @@ object UIUtils {
 
             override fun afterTextChanged(s: Editable?) {
             }
+        }
+    }
+
+    /**
+     * Check whether the app has location permissions.
+     */
+    fun hasLocationPermission(context: Context) =
+        EasyPermissions.hasPermissions(context, Manifest.permission.ACCESS_FINE_LOCATION)
+
+    /**
+     * Construct a new [LocationRequest].
+     */
+    fun getLocationRequest(interval: Long, fastestInterval: Long): LocationRequest {
+        return LocationRequest.create().apply {
+            this.interval = interval
+            this.fastestInterval = fastestInterval
+            priority = LocationRequest.PRIORITY_HIGH_ACCURACY
         }
     }
 }
