@@ -13,8 +13,8 @@ import ee.taltech.alfrol.hw02.api.RestHandler
 import ee.taltech.alfrol.hw02.data.SettingsManager
 import ee.taltech.alfrol.hw02.data.dao.SessionDao
 import ee.taltech.alfrol.hw02.data.model.Session
-import ee.taltech.alfrol.hw02.ui.other.CompassState
-import ee.taltech.alfrol.hw02.ui.other.SessionState
+import ee.taltech.alfrol.hw02.ui.states.CompassState
+import ee.taltech.alfrol.hw02.ui.states.SessionState
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import org.json.JSONObject
@@ -55,31 +55,7 @@ class SessionViewModel @Inject constructor(
                     buttonIcon = R.drawable.ic_stop
                 )
             )
-
-            // Try to create a session in the backend
-            val token = settingsManager.token.firstOrNull() ?: return@launch
-
-            val requestBody = JSONObject()
-            requestBody.put(C.JSON_NAME_KEY, session.name)
-            requestBody.put(C.JSON_DESCRIPTION_KEY, session.description)
-            requestBody.put(C.JSON_RECORDED_AT_KEY, session.recordedAtIso)
-            requestBody.put(C.JSON_PACE_MIN_KEY, 420)
-            requestBody.put(C.JSON_PACE_MAX_KEY, 600)
-
-            val sessionRequest = AuthorizedJsonObjectRequest(
-                Request.Method.POST, C.API_SESSIONS_URL, requestBody,
-                { response ->
-                    val id = response.getString(C.JSON_ID_KEY)
-
-                    // Save backend session id for later use
-                    viewModelScope.launch {
-                        settingsManager.saveSessionId(id)
-                    }
-                },
-                {},
-                token
-            )
-            restHandler.addRequest(sessionRequest)
+            saveSessionToBackend(session)
         }
     }
 
@@ -102,7 +78,7 @@ class SessionViewModel @Inject constructor(
     /**
      * Toggle the compass enabled state.
      */
-    fun enableDisableCompass() {
+    fun toggleCompass() {
         _compassState.value = when (isCompassEnabled()) {
             true -> CompassState()
             false -> CompassState(isEnabled = true, compassButtonIcon = R.drawable.ic_compass_off)
@@ -113,4 +89,34 @@ class SessionViewModel @Inject constructor(
      * Check whether the compass is in enabled state.
      */
     fun isCompassEnabled(): Boolean = _compassState.value?.isEnabled == true
+
+    /**
+     * Try to save the new session to the backend.
+     * Doesn't do anything on failure.
+     */
+    private suspend fun saveSessionToBackend(session: Session) {
+        val token = settingsManager.token.firstOrNull() ?: return
+
+        val requestBody = JSONObject()
+        requestBody.put(C.JSON_NAME_KEY, session.name)
+        requestBody.put(C.JSON_DESCRIPTION_KEY, session.description)
+        requestBody.put(C.JSON_RECORDED_AT_KEY, session.recordedAtIso)
+        requestBody.put(C.JSON_PACE_MIN_KEY, 420)
+        requestBody.put(C.JSON_PACE_MAX_KEY, 600)
+
+        val sessionRequest = AuthorizedJsonObjectRequest(
+            Request.Method.POST, C.API_SESSIONS_URL, requestBody,
+            { response ->
+                val id = response.getString(C.JSON_ID_KEY)
+
+                // Save backend session id for later use
+                viewModelScope.launch {
+                    settingsManager.saveSessionId(id)
+                }
+            },
+            {},
+            token
+        )
+        restHandler.addRequest(sessionRequest)
+    }
 }

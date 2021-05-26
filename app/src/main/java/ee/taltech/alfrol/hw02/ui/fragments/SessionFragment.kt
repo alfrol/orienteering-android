@@ -2,6 +2,7 @@ package ee.taltech.alfrol.hw02.ui.fragments
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -13,16 +14,33 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.lifecycleScope
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.LocationSettingsRequest
+import com.google.android.gms.location.LocationSettingsResponse
+import com.google.android.gms.location.SettingsClient
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
+import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.Polyline
+import com.google.android.gms.maps.model.PolylineOptions
+import com.google.android.gms.tasks.Task
 import com.google.android.material.bottomsheet.BottomSheetBehavior
+import dagger.hilt.android.AndroidEntryPoint
+import ee.taltech.alfrol.hw02.C
 import ee.taltech.alfrol.hw02.R
+import ee.taltech.alfrol.hw02.data.SettingsManager
 import ee.taltech.alfrol.hw02.databinding.FragmentSessionBinding
+import ee.taltech.alfrol.hw02.service.LocationService
 import ee.taltech.alfrol.hw02.ui.utils.CompassListener
+import ee.taltech.alfrol.hw02.ui.utils.UIUtils
 import ee.taltech.alfrol.hw02.ui.viewmodels.SessionViewModel
+import kotlinx.coroutines.flow.first
 import pub.devrel.easypermissions.AppSettingsDialog
 import pub.devrel.easypermissions.EasyPermissions
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class SessionFragment : Fragment(R.layout.fragment_session),
     OnMapReadyCallback,
     GoogleMap.OnMapClickListener,
@@ -33,6 +51,9 @@ class SessionFragment : Fragment(R.layout.fragment_session),
         private const val GLOBAL_LOCATION_REQUEST_CODE = 0
         private const val MY_LOCATION_REQUEST_CODE = 1
     }
+
+    @Inject
+    lateinit var settingsManager: SettingsManager
 
     private var _binding: FragmentSessionBinding? = null
     private val binding get() = _binding!!
@@ -58,6 +79,11 @@ class SessionFragment : Fragment(R.layout.fragment_session),
     private var currentCompassAngle = 0.0f
     private var areSettingsOpen = false
     private var map: GoogleMap? = null
+    private var points: MutableList<LatLng> = mutableListOf()
+    private var polyline: Polyline? = null
+    private var polylineOptions: PolylineOptions = PolylineOptions()
+        .color(ContextCompat.getColor(requireContext(), R.color.primary))
+        .width(10.0f)
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -112,15 +138,26 @@ class SessionFragment : Fragment(R.layout.fragment_session),
             }
         })
 
+        LocationService.points.observe(viewLifecycleOwner, { points ->
+            if (sessionViewModel.isSessionRunning()) {
+                this.points = points
+                addLastPoint()
+            }
+        })
+
         with(binding) {
             fabSessionStart.setOnClickListener {
-                // Only request for permissions before session start
-                if (!sessionViewModel.isSessionRunning() && !hasLocationPermission()) {
+                // Only request for permissions here before session start
+                if (!sessionViewModel.isSessionRunning() && !UIUtils.hasLocationPermission(
+                        requireContext()
+                    )
+                ) {
                     requestLocationPermission()
                 } else if (!sessionViewModel.isSessionRunning()) {
-                    sessionViewModel.startSession()
+                    checkLocationSettings()
                 } else {
                     sessionViewModel.stopSession()
+                    startStopLocationService(C.ACTION_STOP_SERVICE)
                 }
             }
             fabSettings.setOnClickListener {
@@ -144,10 +181,10 @@ class SessionFragment : Fragment(R.layout.fragment_session),
                 }
             }
             fabResetMapView.setOnClickListener {
-
+                // TODO: Rotate the camera to point to the north
             }
             fabToggleCompass.setOnClickListener {
-                sessionViewModel.enableDisableCompass()
+                sessionViewModel.toggleCompass()
             }
         }
     }
@@ -155,6 +192,7 @@ class SessionFragment : Fragment(R.layout.fragment_session),
     override fun onResume() {
         super.onResume()
         binding.mapView.onResume()
+        addAllPoints()
 
         if (sessionViewModel.isCompassEnabled()) {
             compassListener.startListening()
@@ -171,7 +209,6 @@ class SessionFragment : Fragment(R.layout.fragment_session),
         map = googleMap
         map?.setOnMapClickListener(this)
 
-        // Set up the map (ui settings, enable my location etc)
         if (UIUtils.hasLocationPermission(requireContext())) {
             map?.isMyLocationEnabled = true
             with(map?.uiSettings) {
@@ -221,9 +258,12 @@ class SessionFragment : Fragment(R.layout.fragment_session),
 
     override fun onPermissionsGranted(requestCode: Int, perms: List<String>) {
         when (requestCode) {
-            GLOBAL_LOCATION_REQUEST_CODE -> sessionViewModel.startSession()
+            GLOBAL_LOCATION_REQUEST_CODE -> {
+                sessionViewModel.startSession()
+                startStopLocationService(C.ACTION_START_SERVICE)
+            }
             MY_LOCATION_REQUEST_CODE -> {
-
+                // TODO: Navigate to the user location
             }
         }
     }
@@ -258,6 +298,33 @@ class SessionFragment : Fragment(R.layout.fragment_session),
         _binding = null
     }
 
+    /**
+     * Add the last point in points list to the map.
+     */
+    private fun addLastPoint() {
+        if (points.isNotEmpty()) {
+            if (polyline != null) {
+                polyline!!.remove()
+            }
+            polylineOptions.add(points.last())
+            polyline = map?.addPolyline(polylineOptions)
+        }
+    }
+
+    /**
+     * Add all points from the points list to the map.
+     */
+    private fun addAllPoints() {
+        if (polyline != null) {
+            polyline!!.remove()
+        }
+        polylineOptions.addAll(points)
+        polyline = map?.addPolyline(polylineOptions)
+    }
+
+    /**
+     * Set the visibility of settings buttons.
+     */
     private fun setSettingsVisibility(visibility: Int) {
         with(binding) {
             fabCenterMapView.visibility = visibility
@@ -271,6 +338,9 @@ class SessionFragment : Fragment(R.layout.fragment_session),
         }
     }
 
+    /**
+     * Animate the settings buttons when opened/closed.
+     */
     private fun setSettingsAnimation(animation: Animation) {
         with(binding) {
             fabCenterMapView.startAnimation(animation)
@@ -303,6 +373,38 @@ class SessionFragment : Fragment(R.layout.fragment_session),
             } else {
                 // In any other case simply bring the bottom sheet back to collapsed state
                 BottomSheetBehavior.STATE_COLLAPSED
+            }
+        }
+    }
+
+    /**
+     * Start of stop the [LocationService].
+     */
+    private fun startStopLocationService(action: String) =
+        Intent(requireContext(), LocationService::class.java).also {
+            it.action = action
+            requireContext().startService(it)
+        }
+
+    /**
+     * Check whether the suitable location settings are enabled for tracking.
+     * If the result is successful the starts tracking, otherwise does nothing.
+     */
+    private fun checkLocationSettings() {
+        viewLifecycleOwner.lifecycleScope.launchWhenCreated {
+            // Try to first get the location update preferences from the datastore
+            val interval = settingsManager.locationUpdateInterval.first()
+            val fastestInterval = settingsManager.locationUpdateFastestInterval.first()
+
+            val request = UIUtils.getLocationRequest(interval, fastestInterval)
+            val builder = LocationSettingsRequest.Builder().addLocationRequest(request)
+
+            val client: SettingsClient = LocationServices.getSettingsClient(requireContext())
+            val task: Task<LocationSettingsResponse> = client.checkLocationSettings(builder.build())
+
+            task.addOnSuccessListener {
+                sessionViewModel.startSession()
+                startStopLocationService(C.ACTION_START_SERVICE)
             }
         }
     }
