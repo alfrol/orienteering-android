@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.*
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
+import ee.taltech.alfrol.hw02.C
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
@@ -23,6 +24,9 @@ class SettingsManager @Inject constructor(@ApplicationContext context: Context) 
         private val TOKEN_KEY = stringPreferencesKey("token")
         private val SESSION_ID_KEY = stringPreferencesKey("session_id_key")
         private val LOGGED_IN_USER_ID_KEY = longPreferencesKey("logged_in_user_id")
+        private val LOCATION_UPDATE_INTERVAL_LEY = longPreferencesKey("location_update_interval")
+        private val LOCATION_UPDATE_FASTEST_INTERVAL_LEY =
+            longPreferencesKey("location_update_fastest_interval")
     }
 
     private val datastore = context.datastore
@@ -108,6 +112,59 @@ class SettingsManager @Inject constructor(@ApplicationContext context: Context) 
     suspend fun saveLoggedInUser(id: Long) {
         datastore.edit { preferences ->
             preferences[LOGGED_IN_USER_ID_KEY] = id
+        }
+    }
+
+    /**
+     * Get the interval of the location request updates.
+     * If there is no interval stored in datastore, returns the
+     * [C.DEFAULT_LOCATION_UPDATE_INTERVAL].
+     */
+    val locationUpdateInterval: Flow<Long> = datastore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                emit(emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
+        .map { preferences ->
+            preferences[LOCATION_UPDATE_INTERVAL_LEY] ?: C.DEFAULT_LOCATION_UPDATE_INTERVAL
+        }
+
+    /**
+     * Save the given interval of the location request updates.
+     */
+    suspend fun saveLocationUpdateInterval(interval: Long) {
+        datastore.edit { preferences ->
+            preferences[LOCATION_UPDATE_INTERVAL_LEY] = interval
+        }
+    }
+
+    /**
+     * Get the fastest interval of the location request updates.
+     * If there is no fastest interval saved in datastore, returns the
+     * [C.DEFAULT_LOCATION_UPDATE_FASTEST_INTERVAL].
+     */
+    val locationUpdateFastestInterval: Flow<Long> = datastore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                emit(emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
+        .map { preferences ->
+            preferences[LOCATION_UPDATE_FASTEST_INTERVAL_LEY]
+                ?: C.DEFAULT_LOCATION_UPDATE_FASTEST_INTERVAL
+        }
+
+    /**
+     * Save the given interval of the location request updates.
+     */
+    suspend fun saveLocationUpdateFastestInterval(fastestInterval: Long) {
+        datastore.edit { preferences ->
+            preferences[LOCATION_UPDATE_INTERVAL_LEY] = fastestInterval
         }
     }
 }
