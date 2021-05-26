@@ -524,6 +524,10 @@ class SessionFragment : Fragment(R.layout.fragment_session),
             task.addOnSuccessListener {
                 sessionViewModel.startSession()
             }
+
+            task.addOnFailureListener {
+                // TODO: Handle the case where settings are not enabled
+            }
         }
     }
 
