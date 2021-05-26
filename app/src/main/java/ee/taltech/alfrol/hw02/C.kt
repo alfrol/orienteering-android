@@ -21,4 +21,14 @@ object C {
     const val JSON_PACE_MIN_KEY = "paceMin"
     const val JSON_PACE_MAX_KEY = "paceMax"
     const val JSON_ID_KEY = "id"
+
+    const val NOTIFICATION_CHANNEL_ID = "gps_sport_map"
+    const val NOTIFICATION_CHANNEL_NAME = "GPS Sport Map Channel"
+    const val NOTIFICATION_ID = 1
+
+    const val ACTION_START_SERVICE = "START_SERVICE"
+    const val ACTION_STOP_SERVICE = "STOP_SERVICE"
+
+    const val DEFAULT_LOCATION_UPDATE_INTERVAL = 10000L
+    const val DEFAULT_LOCATION_UPDATE_FASTEST_INTERVAL = 5000L
 }
