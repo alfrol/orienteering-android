@@ -1,6 +1,5 @@
 package ee.taltech.alfrol.hw02.data.model
 
-import androidx.annotation.Nullable
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
