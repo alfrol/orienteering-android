@@ -4,6 +4,8 @@
     <string name="title_welcome">Welcome</string>
     <string name="title_login">Login</string>
     <string name="title_register">Register</string>
+    <string name="title_add_checkpoint">Add checkpoint</string>
+    <string name="title_add_waypoint">Add waypoint</string>
 
     <string name="subtitle_new_session">New Session</string>
     <string name="subtitle_sessions">Sessions</string>

@@ -2,13 +2,17 @@ package ee.taltech.alfrol.hw02.ui.fragments
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.graphics.Point
 import android.os.Bundle
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.Animation
 import android.view.animation.AnimationUtils
 import android.view.animation.RotateAnimation
+import android.widget.PopupWindow
+import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
@@ -22,15 +26,14 @@ import com.google.android.gms.location.SettingsClient
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
-import com.google.android.gms.maps.model.LatLng
-import com.google.android.gms.maps.model.Polyline
-import com.google.android.gms.maps.model.PolylineOptions
+import com.google.android.gms.maps.model.*
 import com.google.android.gms.tasks.Task
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import dagger.hilt.android.AndroidEntryPoint
 import ee.taltech.alfrol.hw02.R
 import ee.taltech.alfrol.hw02.data.SettingsManager
 import ee.taltech.alfrol.hw02.databinding.FragmentSessionBinding
+import ee.taltech.alfrol.hw02.databinding.SessionPopupMenuBinding
 import ee.taltech.alfrol.hw02.ui.states.CompassState
 import ee.taltech.alfrol.hw02.ui.states.SessionState
 import ee.taltech.alfrol.hw02.ui.utils.CompassListener
@@ -45,6 +48,7 @@ import javax.inject.Inject
 class SessionFragment : Fragment(R.layout.fragment_session),
     OnMapReadyCallback,
     GoogleMap.OnMapClickListener,
+    GoogleMap.OnMapLongClickListener,
     EasyPermissions.PermissionCallbacks,
     CompassListener.OnCompassUpdateCallback {
 
@@ -83,6 +87,9 @@ class SessionFragment : Fragment(R.layout.fragment_session),
     private var map: GoogleMap? = null
     private var points: MutableList<LatLng> = mutableListOf()
     private var polyline: Polyline? = null
+    private var checkpoints: MutableList<LatLng> = mutableListOf()
+    private var waypoint: LatLng? = null
+    private var waypointMarker: Marker? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -122,12 +129,13 @@ class SessionFragment : Fragment(R.layout.fragment_session),
         sessionViewModel.locationState.observe(viewLifecycleOwner, locationStateObserver)
         sessionViewModel.currentLocation.observe(viewLifecycleOwner, currentLocationObserver)
         sessionViewModel.compassState.observe(viewLifecycleOwner, compassStateObserver)
+        sessionViewModel.checkpoints.observe(viewLifecycleOwner, checkpointsObserver)
+        sessionViewModel.waypoint.observe(viewLifecycleOwner, waypointObserver)
     }
 
     override fun onResume() {
         super.onResume()
         binding.mapView.onResume()
-        addAllPoints()
 
         if (sessionViewModel.isCompassEnabled()) {
             compassListener.startListening()
@@ -137,44 +145,6 @@ class SessionFragment : Fragment(R.layout.fragment_session),
     override fun onStart() {
         super.onStart()
         binding.mapView.onStart()
-    }
-
-    @SuppressLint("MissingPermission")
-    override fun onMapReady(googleMap: GoogleMap) {
-        map = googleMap
-        map?.setOnMapClickListener(this)
-
-        if (UIUtils.hasLocationPermission(requireContext())) {
-            map?.isMyLocationEnabled = true
-            with(map?.uiSettings) {
-                this?.isMyLocationButtonEnabled = false
-                this?.isCompassEnabled = false
-            }
-
-            // When the map is ready try to focus on current device location
-            binding.fabCenterMapView.performClick()
-        }
-    }
-
-    override fun onMapClick(p0: LatLng) {
-        toggleSessionData()
-    }
-
-    override fun onCompassUpdate(angle: Float) {
-        val rotateAnim = RotateAnimation(
-            currentCompassAngle,
-            angle,
-            RotateAnimation.RELATIVE_TO_SELF,
-            0.5f,
-            RotateAnimation.RELATIVE_TO_SELF,
-            0.5f
-        )
-        rotateAnim.duration = 100
-        rotateAnim.fillAfter = true
-
-        // Apply the compass image rotation animation based on the new angle
-        binding.imageViewCompass.startAnimation(rotateAnim)
-        currentCompassAngle = angle
     }
 
     override fun onRequestPermissionsResult(
@@ -199,6 +169,54 @@ class SessionFragment : Fragment(R.layout.fragment_session),
             GLOBAL_LOCATION_REQUEST_CODE -> sessionViewModel.startSession()
             MY_LOCATION_REQUEST_CODE -> sessionViewModel.getCurrentLocation()
         }
+    }
+
+    @SuppressLint("MissingPermission")
+    override fun onMapReady(googleMap: GoogleMap) {
+        map = googleMap
+        map?.setOnMapClickListener(this)
+        map?.setOnMapLongClickListener(this)
+
+        if (UIUtils.hasLocationPermission(requireContext())) {
+            map?.isMyLocationEnabled = true
+            with(map?.uiSettings) {
+                this?.isMyLocationButtonEnabled = false
+                this?.isCompassEnabled = false
+            }
+
+            // When the map is ready try to focus on current device location
+            binding.fabCenterMapView.performClick()
+        }
+
+        // Add all path points, checkpoints and a waypoint if the map was recreated
+        addAllPoints()
+        addAllCheckpoints()
+        addWaypoint()
+    }
+
+    override fun onMapClick(p0: LatLng) {
+        toggleSessionData()
+    }
+
+    override fun onMapLongClick(location: LatLng) {
+        showPopup(location)
+    }
+
+    override fun onCompassUpdate(angle: Float) {
+        val rotateAnim = RotateAnimation(
+            currentCompassAngle,
+            angle,
+            RotateAnimation.RELATIVE_TO_SELF,
+            0.5f,
+            RotateAnimation.RELATIVE_TO_SELF,
+            0.5f
+        )
+        rotateAnim.duration = 100
+        rotateAnim.fillAfter = true
+
+        // Apply the compass image rotation animation based on the new angle
+        binding.imageViewCompass.startAnimation(rotateAnim)
+        currentCompassAngle = angle
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -270,9 +288,13 @@ class SessionFragment : Fragment(R.layout.fragment_session),
     /**
      * Observer for changes in the location points.
      */
-    private val locationStateObserver = Observer<MutableList<LatLng>> {
+    private val locationStateObserver = Observer<MutableList<LatLng>> { locationState ->
+        if (locationState == null) {
+            return@Observer
+        }
+
         if (sessionViewModel.isSessionRunning()) {
-            points = it
+            points = locationState
             addLastPoint()
         }
     }
@@ -285,6 +307,31 @@ class SessionFragment : Fragment(R.layout.fragment_session),
             return@Observer
         }
         map?.animateCamera(CameraUpdateFactory.newLatLngZoom(location, 15.0f))
+    }
+
+
+    /**
+     * Observer for changes in the checkpoints list.
+     */
+    private val checkpointsObserver = Observer<MutableList<LatLng>> { newCheckpoints ->
+        if (newCheckpoints == null) {
+            return@Observer
+        }
+
+        checkpoints = newCheckpoints
+        addLastCheckpoint()
+    }
+
+    /**
+     * Observer for changes in the waypoint.
+     */
+    private val waypointObserver = Observer<LatLng> { newWaypoint ->
+        if (newWaypoint == null) {
+            return@Observer
+        }
+
+        waypoint = newWaypoint
+        addWaypoint()
     }
 
     /**
@@ -373,6 +420,37 @@ class SessionFragment : Fragment(R.layout.fragment_session),
     }
 
     /**
+     * Add the last checkpoint from the checkpoints list.
+     */
+    private fun addLastCheckpoint() {
+        if (checkpoints.isNotEmpty()) {
+            val markerOptions = MarkerOptions().position(checkpoints.last())
+            map?.addMarker(markerOptions)
+        }
+    }
+
+    /**
+     * Add all checkpoint markers to the map.
+     */
+    private fun addAllCheckpoints() =
+        checkpoints.forEach { ckpt ->
+            val markerOptions = MarkerOptions().position(ckpt)
+            map?.addMarker(markerOptions)
+        }
+
+    /**
+     * Add a new waypoint marker to the map.
+     */
+    private fun addWaypoint() =
+        waypoint?.let {
+            if (waypointMarker != null) {
+                waypointMarker!!.remove()
+            }
+            val markerOptions = MarkerOptions().position(it)
+            waypointMarker = map?.addMarker(markerOptions)
+        }
+
+    /**
      * Set the visibility of settings buttons.
      */
     private fun setSettingsVisibility(visibility: Int) {
@@ -446,6 +524,38 @@ class SessionFragment : Fragment(R.layout.fragment_session),
             task.addOnSuccessListener {
                 sessionViewModel.startSession()
             }
+        }
+    }
+
+    /**
+     * Show popup for adding checkpoint or waypoint on the map at the specified location.
+     *
+     * @param location Where to add a new checkpoint.
+     */
+    private fun showPopup(location: LatLng) {
+        val popupViewBinding = SessionPopupMenuBinding.inflate(layoutInflater)
+        val popupView = popupViewBinding.root
+
+        val width = ConstraintLayout.LayoutParams.WRAP_CONTENT
+        val height = ConstraintLayout.LayoutParams.WRAP_CONTENT
+
+        val popupWindow = PopupWindow(popupView, width, height, true)
+        val position = map?.projection?.toScreenLocation(location) ?: Point()
+
+        popupWindow.showAtLocation(
+            binding.imageViewCompass,
+            Gravity.NO_GRAVITY,
+            position.x,
+            position.y
+        )
+
+        popupViewBinding.buttonAddCheckpoint.setOnClickListener {
+            sessionViewModel.addCheckpoint(location)
+            popupWindow.dismiss()
+        }
+        popupViewBinding.buttonAddWaypoint.setOnClickListener {
+            sessionViewModel.addWaypoint(location)
+            popupWindow.dismiss()
         }
     }
 }

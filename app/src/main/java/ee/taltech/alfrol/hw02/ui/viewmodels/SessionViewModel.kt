@@ -46,6 +46,12 @@ class SessionViewModel @Inject constructor(
     private var _compassState = MutableLiveData<CompassState>()
     val compassState: LiveData<CompassState> = _compassState
 
+    private var _checkpoints = MutableLiveData<MutableList<LatLng>>(mutableListOf())
+    val checkpoints: LiveData<MutableList<LatLng>> = _checkpoints
+
+    private var _waypoint = MutableLiveData<LatLng>()
+    val waypoint: LiveData<LatLng> = _waypoint
+
     override fun onCleared() {
         stopObserving(OBSERVE_CURRENT_LOCATION)
         stopObserving(OBSERVE_LOCATION_UPDATES)
@@ -94,6 +100,23 @@ class SessionViewModel @Inject constructor(
 
     fun getCurrentLocation() =
         startLocationService(C.ACTION_GET_CURRENT_LOCATION, OBSERVE_CURRENT_LOCATION)
+
+    /**
+     * Add a new checkpoint to the checkpoints list.
+     * Also save the checkpoint to the db and try to backend server.
+     */
+    fun addCheckpoint(location: LatLng) {
+        _checkpoints.value = _checkpoints.value?.apply {
+            add(location)
+        } ?: mutableListOf(location)
+    }
+
+    /**
+     * Set a new waypoint.
+     */
+    fun addWaypoint(location: LatLng) {
+        _waypoint.value = location
+    }
 
     /**
      * Check whether there is a session that is currently running.
