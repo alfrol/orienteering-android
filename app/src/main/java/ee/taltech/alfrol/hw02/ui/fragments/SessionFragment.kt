@@ -2,7 +2,6 @@ package ee.taltech.alfrol.hw02.ui.fragments
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -20,6 +19,7 @@ import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.LocationSettingsRequest
 import com.google.android.gms.location.LocationSettingsResponse
 import com.google.android.gms.location.SettingsClient
+import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.model.LatLng
@@ -28,11 +28,9 @@ import com.google.android.gms.maps.model.PolylineOptions
 import com.google.android.gms.tasks.Task
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import dagger.hilt.android.AndroidEntryPoint
-import ee.taltech.alfrol.hw02.C
 import ee.taltech.alfrol.hw02.R
 import ee.taltech.alfrol.hw02.data.SettingsManager
 import ee.taltech.alfrol.hw02.databinding.FragmentSessionBinding
-import ee.taltech.alfrol.hw02.service.LocationService
 import ee.taltech.alfrol.hw02.ui.states.CompassState
 import ee.taltech.alfrol.hw02.ui.states.SessionState
 import ee.taltech.alfrol.hw02.ui.utils.CompassListener
@@ -78,15 +76,13 @@ class SessionFragment : Fragment(R.layout.fragment_session),
 
     private lateinit var compassListener: CompassListener
     private lateinit var bottomSheetBehavior: BottomSheetBehavior<View>
+    private lateinit var polylineOptions: PolylineOptions
 
     private var currentCompassAngle = 0.0f
     private var areSettingsOpen = false
     private var map: GoogleMap? = null
     private var points: MutableList<LatLng> = mutableListOf()
     private var polyline: Polyline? = null
-    private var polylineOptions: PolylineOptions = PolylineOptions()
-        .color(ContextCompat.getColor(requireContext(), R.color.primary))
-        .width(10.0f)
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -98,6 +94,9 @@ class SessionFragment : Fragment(R.layout.fragment_session),
         binding.fabSessionStart.backgroundTintList =
             ContextCompat.getColorStateList(requireContext(), R.color.color_fab_session)
         compassListener = CompassListener(requireContext(), this)
+        polylineOptions = PolylineOptions()
+            .color(ContextCompat.getColor(requireContext(), R.color.primary))
+            .width(10.0f)
 
         return binding.root
     }
@@ -115,15 +114,14 @@ class SessionFragment : Fragment(R.layout.fragment_session),
             fabToggleCompass.setOnClickListener(onClickToggleCompass)
 
             // Instantiate the session data as bottom sheet
-            bottomSheetBehavior = BottomSheetBehavior.from(binding.sessionData)
+            bottomSheetBehavior = BottomSheetBehavior.from(sessionData)
             bottomSheetBehavior.state = BottomSheetBehavior.STATE_COLLAPSED
         }
 
-
         sessionViewModel.sessionState.observe(viewLifecycleOwner, sessionStateObserve)
+        sessionViewModel.locationState.observe(viewLifecycleOwner, locationStateObserver)
+        sessionViewModel.currentLocation.observe(viewLifecycleOwner, currentLocationObserver)
         sessionViewModel.compassState.observe(viewLifecycleOwner, compassStateObserver)
-
-        LocationService.points.observe(viewLifecycleOwner, locationObserver)
     }
 
     override fun onResume() {
@@ -152,6 +150,9 @@ class SessionFragment : Fragment(R.layout.fragment_session),
                 this?.isMyLocationButtonEnabled = false
                 this?.isCompassEnabled = false
             }
+
+            // When the map is ready try to focus on current device location
+            binding.fabCenterMapView.performClick()
         }
     }
 
@@ -195,13 +196,8 @@ class SessionFragment : Fragment(R.layout.fragment_session),
 
     override fun onPermissionsGranted(requestCode: Int, perms: List<String>) {
         when (requestCode) {
-            GLOBAL_LOCATION_REQUEST_CODE -> {
-                sessionViewModel.startSession()
-                startStopLocationService(C.ACTION_START_SERVICE)
-            }
-            MY_LOCATION_REQUEST_CODE -> {
-                // TODO: Navigate to the user location
-            }
+            GLOBAL_LOCATION_REQUEST_CODE -> sessionViewModel.startSession()
+            MY_LOCATION_REQUEST_CODE -> sessionViewModel.getCurrentLocation()
         }
     }
 
@@ -272,13 +268,23 @@ class SessionFragment : Fragment(R.layout.fragment_session),
     }
 
     /**
-     * Observer for changes in [LocationService.points].
+     * Observer for changes in the location points.
      */
-    private val locationObserver = Observer<MutableList<LatLng>> {
+    private val locationStateObserver = Observer<MutableList<LatLng>> {
         if (sessionViewModel.isSessionRunning()) {
             points = it
             addLastPoint()
         }
+    }
+
+    /**
+     * Observer for changes in the current device location.
+     */
+    private val currentLocationObserver = Observer<LatLng> { location ->
+        if (location == null) {
+            return@Observer
+        }
+        map?.animateCamera(CameraUpdateFactory.newLatLngZoom(location, 15.0f))
     }
 
     /**
@@ -295,7 +301,6 @@ class SessionFragment : Fragment(R.layout.fragment_session),
             checkLocationSettings()
         } else {
             sessionViewModel.stopSession()
-            startStopLocationService(C.ACTION_STOP_SERVICE)
         }
     }
 
@@ -325,7 +330,7 @@ class SessionFragment : Fragment(R.layout.fragment_session),
         if (!UIUtils.hasLocationPermission(requireContext())) {
             requestLocationPermission(MY_LOCATION_REQUEST_CODE)
         } else {
-            // TODO: Center the view on the user current location
+            sessionViewModel.getCurrentLocation()
         }
     }
 
@@ -340,7 +345,7 @@ class SessionFragment : Fragment(R.layout.fragment_session),
      * Listener for compass button.
      */
     private val onClickToggleCompass = View.OnClickListener {
-
+        sessionViewModel.toggleCompass()
     }
 
     /**
@@ -423,15 +428,6 @@ class SessionFragment : Fragment(R.layout.fragment_session),
     }
 
     /**
-     * Start of stop the [LocationService].
-     */
-    private fun startStopLocationService(action: String) =
-        Intent(requireContext(), LocationService::class.java).also {
-            it.action = action
-            requireContext().startService(it)
-        }
-
-    /**
      * Check whether the suitable location settings are enabled for tracking.
      * If the result is successful the starts tracking, otherwise does nothing.
      */
@@ -449,7 +445,6 @@ class SessionFragment : Fragment(R.layout.fragment_session),
 
             task.addOnSuccessListener {
                 sessionViewModel.startSession()
-                startStopLocationService(C.ACTION_START_SERVICE)
             }
         }
     }

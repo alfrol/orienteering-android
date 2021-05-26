@@ -7,7 +7,6 @@ import android.content.Context
 import android.content.Intent
 import android.location.Location
 import android.os.Looper
-import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.MutableLiveData
@@ -32,6 +31,7 @@ class LocationService : LifecycleService() {
 
     companion object {
         val points = MutableLiveData<MutableList<LatLng>>(mutableListOf())
+        val currentLocation = MutableLiveData<LatLng>()
     }
 
     @Inject
@@ -51,6 +51,7 @@ class LocationService : LifecycleService() {
             when (it.action) {
                 C.ACTION_START_SERVICE -> startService()
                 C.ACTION_STOP_SERVICE -> stopService()
+                C.ACTION_GET_CURRENT_LOCATION -> getCurrentLocation()
             }
         }
         return super.onStartCommand(intent, flags, startId)
@@ -64,6 +65,19 @@ class LocationService : LifecycleService() {
     private fun stopService() {
         stopSelf()
         fusedLocationProviderClient.removeLocationUpdates(callback)
+    }
+
+    /**
+     * Request the current location and notify observers.
+     */
+    @SuppressLint("MissingPermission")
+    private fun getCurrentLocation() {
+        if (UIUtils.hasLocationPermission(this)) {
+            fusedLocationProviderClient.lastLocation.addOnSuccessListener {
+                val latLng = LatLng(it.latitude, it.longitude)
+                currentLocation.value = latLng
+            }
+        }
     }
 
     /**
