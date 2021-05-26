@@ -32,6 +32,8 @@ class LocationService : LifecycleService() {
     companion object {
         val points = MutableLiveData<MutableList<LatLng>>(mutableListOf())
         val currentLocation = MutableLiveData<LatLng>()
+
+        private const val MAX_RETRIES = 3
     }
 
     @Inject
@@ -69,13 +71,30 @@ class LocationService : LifecycleService() {
 
     /**
      * Request the current location and notify observers.
+     *
+     * @param retries The number of times to try to query the location
+     * if previous request fails.
      */
     @SuppressLint("MissingPermission")
-    private fun getCurrentLocation() {
+    private fun getCurrentLocation(retries: Int = 0) {
+        if (retries == MAX_RETRIES) {
+            return
+        }
+
         if (UIUtils.hasLocationPermission(this)) {
             fusedLocationProviderClient.lastLocation.addOnSuccessListener {
-                val latLng = LatLng(it.latitude, it.longitude)
-                currentLocation.value = latLng
+                it?.apply {
+                    val latLng = LatLng(latitude, longitude)
+                    currentLocation.value = latLng
+                }
+            }
+
+            fusedLocationProviderClient.lastLocation.addOnFailureListener {
+                if (currentLocation.value == null) {
+                    getCurrentLocation(retries + 1)
+                } else {
+                    currentLocation.value = currentLocation.value
+                }
             }
         }
     }
