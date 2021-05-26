@@ -14,6 +14,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.Observer
 import androidx.lifecycle.lifecycleScope
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.LocationSettingsRequest
@@ -32,6 +33,8 @@ import ee.taltech.alfrol.hw02.R
 import ee.taltech.alfrol.hw02.data.SettingsManager
 import ee.taltech.alfrol.hw02.databinding.FragmentSessionBinding
 import ee.taltech.alfrol.hw02.service.LocationService
+import ee.taltech.alfrol.hw02.ui.states.CompassState
+import ee.taltech.alfrol.hw02.ui.states.SessionState
 import ee.taltech.alfrol.hw02.ui.utils.CompassListener
 import ee.taltech.alfrol.hw02.ui.utils.UIUtils
 import ee.taltech.alfrol.hw02.ui.viewmodels.SessionViewModel
@@ -104,89 +107,23 @@ class SessionFragment : Fragment(R.layout.fragment_session),
         with(binding) {
             mapView.onCreate(savedInstanceState)
             mapView.getMapAsync(this@SessionFragment)
+
+            fabSessionStart.setOnClickListener(onClickSessionStart)
+            fabSettings.setOnClickListener(onClickSettings)
+            fabCenterMapView.setOnClickListener(onClickCenterView)
+            fabResetMapView.setOnClickListener(onClickResetMapView)
+            fabToggleCompass.setOnClickListener(onClickToggleCompass)
+
+            // Instantiate the session data as bottom sheet
+            bottomSheetBehavior = BottomSheetBehavior.from(binding.sessionData)
+            bottomSheetBehavior.state = BottomSheetBehavior.STATE_COLLAPSED
         }
 
-        // Instantiate the session data as bottom sheet
-        bottomSheetBehavior = BottomSheetBehavior.from(binding.sessionData)
-        bottomSheetBehavior.state = BottomSheetBehavior.STATE_COLLAPSED
 
-        sessionViewModel.sessionState.observe(viewLifecycleOwner, { sessionState ->
-            if (sessionState == null) {
-                return@observe
-            }
+        sessionViewModel.sessionState.observe(viewLifecycleOwner, sessionStateObserve)
+        sessionViewModel.compassState.observe(viewLifecycleOwner, compassStateObserver)
 
-            with(binding) {
-                fabSessionStart.backgroundTintList =
-                    ContextCompat.getColorStateList(requireContext(), sessionState.buttonColor)
-                fabSessionStart.setImageResource(sessionState.buttonIcon)
-            }
-        })
-        sessionViewModel.compassState.observe(viewLifecycleOwner, { compassState ->
-            if (compassState == null) {
-                return@observe
-            }
-
-            with(binding) {
-                imageViewCompass.clearAnimation()
-                imageViewCompass.isVisible = compassState.isEnabled
-                fabToggleCompass.setImageResource(compassState.compassButtonIcon)
-            }
-            if (compassState.isEnabled) {
-                compassListener.startListening()
-            } else {
-                compassListener.stopListening()
-            }
-        })
-
-        LocationService.points.observe(viewLifecycleOwner, { points ->
-            if (sessionViewModel.isSessionRunning()) {
-                this.points = points
-                addLastPoint()
-            }
-        })
-
-        with(binding) {
-            fabSessionStart.setOnClickListener {
-                // Only request for permissions here before session start
-                if (!sessionViewModel.isSessionRunning() && !UIUtils.hasLocationPermission(
-                        requireContext()
-                    )
-                ) {
-                    requestLocationPermission()
-                } else if (!sessionViewModel.isSessionRunning()) {
-                    checkLocationSettings()
-                } else {
-                    sessionViewModel.stopSession()
-                    startStopLocationService(C.ACTION_STOP_SERVICE)
-                }
-            }
-            fabSettings.setOnClickListener {
-                when (areSettingsOpen) {
-                    true -> {
-                        setSettingsVisibility(View.INVISIBLE)
-                        setSettingsAnimation(toTop)
-                        it.startAnimation(closeSettings)
-                    }
-                    false -> {
-                        setSettingsVisibility(View.VISIBLE)
-                        setSettingsAnimation(fromTop)
-                        it.startAnimation(openSettings)
-                    }
-                }
-                areSettingsOpen = !areSettingsOpen
-            }
-            fabCenterMapView.setOnClickListener {
-                if (!UIUtils.hasLocationPermission(requireContext())) {
-                    requestLocationPermission(MY_LOCATION_REQUEST_CODE)
-                }
-            }
-            fabResetMapView.setOnClickListener {
-                // TODO: Rotate the camera to point to the north
-            }
-            fabToggleCompass.setOnClickListener {
-                sessionViewModel.toggleCompass()
-            }
-        }
+        LocationService.points.observe(viewLifecycleOwner, locationObserver)
     }
 
     override fun onResume() {
@@ -296,6 +233,114 @@ class SessionFragment : Fragment(R.layout.fragment_session),
         super.onDestroyView()
         binding.mapView.onDestroy()
         _binding = null
+    }
+
+    /**
+     * Observer for changes in session state.
+     */
+    private val sessionStateObserve = Observer<SessionState> { sessionState ->
+        if (sessionState == null) {
+            return@Observer
+        }
+
+        with(binding) {
+            fabSessionStart.backgroundTintList =
+                ContextCompat.getColorStateList(requireContext(), sessionState.buttonColor)
+            fabSessionStart.setImageResource(sessionState.buttonIcon)
+        }
+    }
+
+    /**
+     * Observer for changes in compass state.
+     */
+    private val compassStateObserver = Observer<CompassState> { compassState ->
+        if (compassState == null) {
+            return@Observer
+        }
+
+        with(binding) {
+            imageViewCompass.clearAnimation()
+            imageViewCompass.isVisible = compassState.isEnabled
+            fabToggleCompass.setImageResource(compassState.compassButtonIcon)
+        }
+
+        if (compassState.isEnabled) {
+            compassListener.startListening()
+        } else {
+            compassListener.stopListening()
+        }
+    }
+
+    /**
+     * Observer for changes in [LocationService.points].
+     */
+    private val locationObserver = Observer<MutableList<LatLng>> {
+        if (sessionViewModel.isSessionRunning()) {
+            points = it
+            addLastPoint()
+        }
+    }
+
+    /**
+     * Listener for session start/stop button.
+     */
+    private val onClickSessionStart = View.OnClickListener {
+        // Only request for permissions here before session start
+        if (!sessionViewModel.isSessionRunning() && !UIUtils.hasLocationPermission(
+                requireContext()
+            )
+        ) {
+            requestLocationPermission()
+        } else if (!sessionViewModel.isSessionRunning()) {
+            checkLocationSettings()
+        } else {
+            sessionViewModel.stopSession()
+            startStopLocationService(C.ACTION_STOP_SERVICE)
+        }
+    }
+
+    /**
+     * Listener for settings button.
+     */
+    private val onClickSettings = View.OnClickListener {
+        when (areSettingsOpen) {
+            true -> {
+                setSettingsVisibility(View.INVISIBLE)
+                setSettingsAnimation(toTop)
+                it.startAnimation(closeSettings)
+            }
+            false -> {
+                setSettingsVisibility(View.VISIBLE)
+                setSettingsAnimation(fromTop)
+                it.startAnimation(openSettings)
+            }
+        }
+        areSettingsOpen = !areSettingsOpen
+    }
+
+    /**
+     * Listener for center view button.
+     */
+    private val onClickCenterView = View.OnClickListener {
+        if (!UIUtils.hasLocationPermission(requireContext())) {
+            requestLocationPermission(MY_LOCATION_REQUEST_CODE)
+        } else {
+            // TODO: Center the view on the user current location
+        }
+    }
+
+    /**
+     * Listener for reset map view button.
+     */
+    private val onClickResetMapView = View.OnClickListener {
+        // TODO: Rotate the camera to point to the north
+    }
+
+    /**
+     * Listener for compass button.
+     */
+    private val onClickToggleCompass = View.OnClickListener {
+
     }
 
     /**
