@@ -25,6 +25,7 @@ import pub.devrel.easypermissions.EasyPermissions
 
 class SessionFragment : Fragment(R.layout.fragment_session),
     OnMapReadyCallback,
+    GoogleMap.OnMapClickListener,
     EasyPermissions.PermissionCallbacks,
     CompassListener.OnCompassUpdateCallback {
 
@@ -74,14 +75,12 @@ class SessionFragment : Fragment(R.layout.fragment_session),
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        //val mapFragment = childFragmentManager.findFragmentById(R.id.map) as SupportMapFragment?
-        //mapFragment?.getMapAsync(this)
         with(binding) {
-            map.onCreate(savedInstanceState)
-            map.getMapAsync(this@SessionFragment)
+            mapView.onCreate(savedInstanceState)
+            mapView.getMapAsync(this@SessionFragment)
         }
 
-        // Instantiate the session data fragment as bottom sheet
+        // Instantiate the session data as bottom sheet
         bottomSheetBehavior = BottomSheetBehavior.from(binding.sessionData)
         bottomSheetBehavior.state = BottomSheetBehavior.STATE_COLLAPSED
 
@@ -140,7 +139,7 @@ class SessionFragment : Fragment(R.layout.fragment_session),
                 areSettingsOpen = !areSettingsOpen
             }
             fabCenterMapView.setOnClickListener {
-                if (!hasLocationPermission()) {
+                if (!UIUtils.hasLocationPermission(requireContext())) {
                     requestLocationPermission(MY_LOCATION_REQUEST_CODE)
                 }
             }
@@ -155,7 +154,7 @@ class SessionFragment : Fragment(R.layout.fragment_session),
 
     override fun onResume() {
         super.onResume()
-        binding.map.onResume()
+        binding.mapView.onResume()
 
         if (sessionViewModel.isCompassEnabled()) {
             compassListener.startListening()
@@ -164,25 +163,26 @@ class SessionFragment : Fragment(R.layout.fragment_session),
 
     override fun onStart() {
         super.onStart()
-        binding.map.onStart()
+        binding.mapView.onStart()
     }
 
     @SuppressLint("MissingPermission")
     override fun onMapReady(googleMap: GoogleMap) {
         map = googleMap
+        map?.setOnMapClickListener(this)
 
         // Set up the map (ui settings, enable my location etc)
-        if (hasLocationPermission()) {
+        if (UIUtils.hasLocationPermission(requireContext())) {
             map?.isMyLocationEnabled = true
             with(map?.uiSettings) {
                 this?.isMyLocationButtonEnabled = false
                 this?.isCompassEnabled = false
             }
         }
+    }
 
-        map?.setOnMapClickListener {
-            toggleSessionData()
-        }
+    override fun onMapClick(p0: LatLng) {
+        toggleSessionData()
     }
 
     override fun onCompassUpdate(angle: Float) {
@@ -230,12 +230,12 @@ class SessionFragment : Fragment(R.layout.fragment_session),
 
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
-        binding.map.onSaveInstanceState(outState)
+        binding.mapView.onSaveInstanceState(outState)
     }
 
     override fun onPause() {
         super.onPause()
-        binding.map.onPause()
+        binding.mapView.onPause()
 
         if (sessionViewModel.isCompassEnabled()) {
             compassListener.stopListening()
@@ -244,17 +244,17 @@ class SessionFragment : Fragment(R.layout.fragment_session),
 
     override fun onStop() {
         super.onStop()
-        binding.map.onStop()
+        binding.mapView.onStop()
     }
 
     override fun onLowMemory() {
         super.onLowMemory()
-        binding.map.onLowMemory()
+        binding.mapView.onLowMemory()
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
-        binding.map.onDestroy()
+        binding.mapView.onDestroy()
         _binding = null
     }
 
@@ -278,12 +278,6 @@ class SessionFragment : Fragment(R.layout.fragment_session),
             fabToggleCompass.startAnimation(animation)
         }
     }
-
-    /**
-     * Check whether the app has location permissions.
-     */
-    private fun hasLocationPermission() =
-        EasyPermissions.hasPermissions(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION)
 
     /**
      * Request location permissions.
