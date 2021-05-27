@@ -44,20 +44,20 @@ import javax.inject.Inject
 class LocationService : LifecycleService() {
 
     companion object {
-        val isRunning = MutableLiveData(false)
-        val pathPoints = MutableLiveData<MutableList<LatLng>>(mutableListOf())
-        val checkpoints = MutableLiveData<MutableList<LatLng>>(mutableListOf())
-        val waypoint = MutableLiveData<LatLng>()
+        val isRunning = MutableLiveData<Boolean>()
+        val pathPoints = MutableLiveData<MutableList<LatLng>>()
+        val checkpoints = MutableLiveData<MutableList<LatLng>>()
+        val waypoint = MutableLiveData<LatLng?>()
         val currentLocation = MutableLiveData<LatLng>()
 
-        val totalDistance = MutableLiveData(0.0f)
-        val totalAveragePace = MutableLiveData(0.0f)
+        val totalDistance = MutableLiveData<Float>()
+        val totalAveragePace = MutableLiveData<Float>()
 
-        val checkpointDistance = MutableLiveData(0.0f)
-        val checkpointAveragePace = MutableLiveData(0.0f)
+        val checkpointDistance = MutableLiveData<Float>()
+        val checkpointAveragePace = MutableLiveData<Float>()
 
-        val waypointDistance = MutableLiveData(0.0f)
-        val waypointAveragePace = MutableLiveData(0.0f)
+        val waypointDistance = MutableLiveData<Float>()
+        val waypointAveragePace = MutableLiveData<Float>()
 
         private const val MAX_RETRIES = 3
 
@@ -131,6 +131,21 @@ class LocationService : LifecycleService() {
         fusedLocationProviderClient.removeLocationUpdates(callback)
     }
 
+    private fun postInitialValues() {
+        pathPoints.value = mutableListOf()
+        checkpoints.value = mutableListOf()
+        waypoint.value = null
+
+        totalDistance.value = 0.0f
+        totalAveragePace.value = 0.0f
+
+        checkpointDistance.value = 0.0f
+        checkpointAveragePace.value = 0.0f
+
+        waypointDistance.value = 0.0f
+        waypointAveragePace.value = 0.0f
+    }
+
     private fun startService() {
         runBlocking {
             val rawSession = Session()
@@ -141,16 +156,20 @@ class LocationService : LifecycleService() {
         }
         saveSessionToBackend()
 
-        isRunning.value = true
+        postInitialValues()
         startForeground(C.NOTIFICATION_ID, createNotification())
         requestLocationUpdates()
         startObserving()
+        isRunning.value = true
     }
 
     private fun stopService() {
-        isRunning.value = false
-        stopSelf()
         fusedLocationProviderClient.removeLocationUpdates(callback)
+        updateSessionInDb()
+        isRunning.value = false
+        postInitialValues()
+        stopForeground(true)
+        stopSelf()
     }
 
     private fun startObserving() {
@@ -186,12 +205,14 @@ class LocationService : LifecycleService() {
      * Observer for changes in [waypoint].
      * Used for saving the waypoint when it's updated.
      */
-    private val waypointObserver = Observer<LatLng> {
+    private val waypointObserver = Observer<LatLng?> {
         it?.let { wp ->
             val location = Location("").apply {
                 latitude = wp.latitude
                 longitude = wp.longitude
             }
+
+            saveLocation(location, C.WP_TYPE_ID)
         }
     }
 
@@ -368,6 +389,24 @@ class LocationService : LifecycleService() {
                 token
             )
             restHandler.addRequest(sessionRequest)
+        }
+    }
+
+    /**
+     * Update session in the database.
+     */
+    private fun updateSessionInDb() {
+        val updatedSession = Session(
+            id = session.id,
+            externalId = session.externalId,
+            recordedAt = session.recordedAt,
+            distance = totalDistance.value ?: 0.0f,
+            duration = duration,
+            pace = totalAveragePace.value ?: 0.0f
+        )
+
+        lifecycleScope.launchWhenCreated {
+            sessionDao.update(session)
         }
     }
 

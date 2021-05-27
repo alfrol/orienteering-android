@@ -5,6 +5,7 @@ import android.annotation.SuppressLint
 import android.content.Intent
 import android.graphics.Point
 import android.os.Bundle
+import android.util.Log
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
@@ -13,11 +14,13 @@ import android.view.animation.Animation
 import android.view.animation.AnimationUtils
 import android.view.animation.RotateAnimation
 import android.widget.PopupWindow
+import androidx.appcompat.app.AlertDialog
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.navigation.fragment.findNavController
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.LocationSettingsRequest
 import com.google.android.gms.location.LocationSettingsResponse
@@ -478,11 +481,8 @@ class SessionFragment : Fragment(R.layout.fragment_session),
         } else if (!isRunning) {
             checkLocationSettings()
         } else {
-            startLocationService(C.ACTION_STOP_SERVICE)
-            startStopwatchService(C.ACTION_STOP_SERVICE, C.STOPWATCH_TOTAL)
+            showEndDialog()
         }
-
-        binding.loadingSpinner.visibility = View.VISIBLE
     }
 
     /**
@@ -607,6 +607,29 @@ class SessionFragment : Fragment(R.layout.fragment_session),
     }
 
     /**
+     * Show dialog before stopping the session to ensure user does not accidentally stop it.
+     */
+    private fun showEndDialog() {
+        AlertDialog.Builder(requireContext())
+            .setTitle(R.string.title_stop_session)
+            .setMessage(R.string.text_stopping_confirmation)
+            .setPositiveButton(android.R.string.ok) { _, _ ->
+                binding.loadingSpinner.visibility = View.VISIBLE
+                stopSession()
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .create()
+            .show()
+    }
+
+    private fun stopSession() {
+        startLocationService(C.ACTION_STOP_SERVICE)
+        startStopwatchService(C.ACTION_STOP_SERVICE, C.STOPWATCH_TOTAL)
+        findNavController().popBackStack()
+        UIUtils.showToast(requireContext(), R.string.text_session_ended)
+    }
+
+    /**
      * Set the visibility of settings buttons.
      */
     private fun setSettingsVisibility(visibility: Int) {
@@ -681,6 +704,8 @@ class SessionFragment : Fragment(R.layout.fragment_session),
         val task: Task<LocationSettingsResponse> = client.checkLocationSettings(builder.build())
 
         task.addOnSuccessListener {
+            binding.loadingSpinner.visibility = View.VISIBLE
+
             startLocationService(C.ACTION_START_SERVICE)
             startLocationService(C.ACTION_GET_CURRENT_LOCATION)
             startStopwatchService(C.ACTION_START_SERVICE, C.STOPWATCH_TOTAL)

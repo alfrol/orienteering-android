@@ -1,7 +1,6 @@
 package ee.taltech.alfrol.hw02.service
 
 import android.content.Intent
-import android.util.Log
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.MutableLiveData
 import ee.taltech.alfrol.hw02.C
@@ -12,9 +11,9 @@ import java.util.concurrent.TimeUnit
 class StopwatchService : LifecycleService() {
 
     companion object {
-        val total = MutableLiveData(0L)
-        val checkpoint = MutableLiveData(0L)
-        val waypoint = MutableLiveData(0L)
+        val total = MutableLiveData<Long>()
+        val checkpoint = MutableLiveData<Long>()
+        val waypoint = MutableLiveData<Long>()
     }
 
     private lateinit var executorService: ScheduledExecutorService
@@ -31,8 +30,6 @@ class StopwatchService : LifecycleService() {
         intent?.let {
             val stopwatchType = it.getIntExtra(C.STOPWATCH_TYPE_KEY, C.STOPWATCH_TOTAL)
 
-            Log.d("StopwatchService", "onStartCommand: ${it.action}")
-
             when (it.action) {
                 C.ACTION_START_SERVICE -> startStopwatch(stopwatchType)
                 C.ACTION_STOP_SERVICE -> stopStopwatch(stopwatchType)
@@ -48,6 +45,12 @@ class StopwatchService : LifecycleService() {
         }
     }
 
+    private fun postInitialValues() {
+        total.value = 0L
+        checkpoint.value = 0L
+        waypoint.value = 0L
+    }
+
     /**
      * Start running the stopwatch.
      *
@@ -61,8 +64,11 @@ class StopwatchService : LifecycleService() {
             C.STOPWATCH_TOTAL -> {
                 isTotalRunning = true
                 totalDuration = 0L
+                checkpointDuration = 0L
+                waypointDuration = 0L
 
                 // We only need to start the timer once when total stopwatch is started.
+                postInitialValues()
                 run()
             }
             C.STOPWATCH_CHECKPOINT -> {
@@ -88,16 +94,21 @@ class StopwatchService : LifecycleService() {
                 isTotalRunning = false
                 isCheckpointRunning = false
                 isWaypointRunning = false
+                totalDuration = 0L
+                checkpointDuration = 0L
+                waypointDuration = 0L
 
-                // When total stopwatch is shutdown then all others must also be shutdown
                 executorService.shutdown()
+                postInitialValues()
                 stopSelf()
             }
             C.STOPWATCH_CHECKPOINT -> {
                 isCheckpointRunning = false
+                checkpointDuration = 0L
             }
             C.STOPWATCH_WAYPOINT -> {
                 isWaypointRunning = false
+                waypointDuration = 0L
             }
         }
     }
