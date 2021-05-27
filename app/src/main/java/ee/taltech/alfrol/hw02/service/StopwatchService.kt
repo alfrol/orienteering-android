@@ -40,7 +40,9 @@ class StopwatchService : LifecycleService() {
 
     override fun onDestroy() {
         super.onDestroy()
-        executorService.shutdown()
+        if (this::executorService.isInitialized) {
+            executorService.shutdown()
+        }
     }
 
     /**
