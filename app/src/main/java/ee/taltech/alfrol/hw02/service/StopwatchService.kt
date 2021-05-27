@@ -1,6 +1,7 @@
 package ee.taltech.alfrol.hw02.service
 
 import android.content.Intent
+import android.util.Log
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.MutableLiveData
 import ee.taltech.alfrol.hw02.C
@@ -29,6 +30,8 @@ class StopwatchService : LifecycleService() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         intent?.let {
             val stopwatchType = it.getIntExtra(C.STOPWATCH_TYPE_KEY, C.STOPWATCH_TOTAL)
+
+            Log.d("StopwatchService", "onStartCommand: ${it.action}")
 
             when (it.action) {
                 C.ACTION_START_SERVICE -> startStopwatch(stopwatchType)
@@ -88,6 +91,7 @@ class StopwatchService : LifecycleService() {
 
                 // When total stopwatch is shutdown then all others must also be shutdown
                 executorService.shutdown()
+                stopSelf()
             }
             C.STOPWATCH_CHECKPOINT -> {
                 isCheckpointRunning = false
