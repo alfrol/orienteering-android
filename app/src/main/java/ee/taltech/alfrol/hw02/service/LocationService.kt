@@ -10,6 +10,7 @@ import android.os.Looper
 import androidx.core.app.NotificationCompat
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.Observer
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavDeepLinkBuilder
 import com.android.volley.Request
@@ -33,6 +34,7 @@ import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.json.JSONObject
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -59,6 +61,8 @@ class LocationService : LifecycleService() {
     private lateinit var fusedLocationProviderClient: FusedLocationProviderClient
     private lateinit var notificationManager: NotificationManager
 
+    private var lastWholeSecond = 0L
+
     override fun onCreate() {
         super.onCreate()
         notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -76,6 +80,12 @@ class LocationService : LifecycleService() {
         return super.onStartCommand(intent, flags, startId)
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        fusedLocationProviderClient.removeLocationUpdates(callback)
+        StopwatchService.total.removeObserver(stopwatchObserver)
+    }
+
     private fun startService() {
         val session: Session
 
@@ -89,6 +99,7 @@ class LocationService : LifecycleService() {
         isRunning.value = true
         startForeground(C.NOTIFICATION_ID, createNotification())
         requestLocationUpdates()
+        StopwatchService.total.observeForever(stopwatchObserver)
     }
 
     private fun stopService() {
@@ -99,6 +110,21 @@ class LocationService : LifecycleService() {
         isRunning.value = false
         stopSelf()
         fusedLocationProviderClient.removeLocationUpdates(callback)
+        StopwatchService.total.removeObserver(stopwatchObserver)
+    }
+
+    /**
+     * Observer for changes in the total duration.
+     * Updates the notification with the new duration,
+     * but does that only each second.
+     */
+    private val stopwatchObserver = Observer<Long> {
+        if (it >= lastWholeSecond + TimeUnit.SECONDS.toMillis(1)) {
+            lastWholeSecond = it
+            val durationFormatted = UIUtils.formatDuration(this, it, false)
+            val notification = createNotification(durationFormatted)
+            notificationManager.notify(C.NOTIFICATION_ID, notification)
+        }
     }
 
     /**
@@ -212,11 +238,11 @@ class LocationService : LifecycleService() {
     /**
      * Create a new notification.
      */
-    private fun createNotification(): Notification {
+    private fun createNotification(text: String? = null): Notification {
         return NotificationCompat.Builder(this, C.NOTIFICATION_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(getString(R.string.app_name))
-            .setContentText("")
+            .setContentText(text)
             .setContentIntent(createPendingIntent())
             .build()
     }
