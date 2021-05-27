@@ -4,6 +4,7 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.graphics.Point
+import android.location.Location
 import android.os.Bundle
 import android.view.Gravity
 import android.view.LayoutInflater
@@ -203,6 +204,8 @@ class SessionFragment : Fragment(R.layout.fragment_session),
         addAllPathPoints()
         addAllCheckpoints()
         addWaypoint()
+        updateDistance(calculateDistanceFromLastCheckpoint(), SESSION_DATA_CHECKPOINT)
+        updateDistance(calculateDistanceFromWaypoint(), SESSION_DATA_WAYPOINT)
     }
 
     override fun onMapClick(p0: LatLng) {
@@ -298,6 +301,14 @@ class SessionFragment : Fragment(R.layout.fragment_session),
         })
         LocationService.pathPoints.observe(viewLifecycleOwner, {
             updatePathPoints(it)
+            updateDistance(calculateDistanceFromLastCheckpoint(), SESSION_DATA_CHECKPOINT)
+            updateDistance(calculateDistanceFromWaypoint(), SESSION_DATA_WAYPOINT)
+        })
+        LocationService.checkpoints.observe(viewLifecycleOwner, {
+            updateCheckpoints(it)
+        })
+        LocationService.waypoint.observe(viewLifecycleOwner, {
+            updateWaypoint(it)
         })
         LocationService.currentLocation.observe(viewLifecycleOwner, {
             isFollowingDevice = true
@@ -320,12 +331,6 @@ class SessionFragment : Fragment(R.layout.fragment_session),
             updateDuration(it, SESSION_DATA_WAYPOINT)
         })
 
-        sessionViewModel.checkpoints.observe(viewLifecycleOwner, {
-            updateCheckpoints(it)
-        })
-        sessionViewModel.waypoint.observe(viewLifecycleOwner, {
-            updateWaypoint(it)
-        })
         sessionViewModel.compassState.observe(viewLifecycleOwner, {
             updateCompassState(it)
         })
@@ -571,6 +576,31 @@ class SessionFragment : Fragment(R.layout.fragment_session),
         }
 
     /**
+     * Calculate the distance between the last checkpoint and the last path point.
+     *
+     * @return Distance in meters.
+     */
+    private fun calculateDistanceFromLastCheckpoint(): Float {
+        if (checkpoints.isNotEmpty() && pathPoints.isNotEmpty()) {
+            val lastPoint = pathPoints.last()
+            val lastCheckpoint = checkpoints.last()
+
+            val result = FloatArray(1)
+            Location.distanceBetween(
+                lastPoint.latitude,
+                lastPoint.longitude,
+                lastCheckpoint.latitude,
+                lastCheckpoint.longitude,
+                result
+            )
+
+            return result[0]
+        }
+
+        return 0.0f
+    }
+
+    /**
      * Add a new waypoint marker to the map.
      */
     private fun addWaypoint() =
@@ -581,6 +611,30 @@ class SessionFragment : Fragment(R.layout.fragment_session),
             val markerOptions = MarkerOptions().position(it)
             waypointMarker = map?.addMarker(markerOptions)
         }
+
+    /**
+     * Calculate the distance between the waypoint and the last path point.
+     *
+     * @return Distance in meters.
+     */
+    private fun calculateDistanceFromWaypoint(): Float {
+        if (waypoint != null && pathPoints.isNotEmpty()) {
+            val lastPoint = pathPoints.last()
+
+            val result = FloatArray(1)
+            Location.distanceBetween(
+                lastPoint.latitude,
+                lastPoint.longitude,
+                waypoint!!.latitude,
+                waypoint!!.longitude,
+                result
+            )
+
+            return result[0]
+        }
+
+        return 0.0f
+    }
 
     /**
      * Navigate the camera to the current location.
@@ -699,12 +753,12 @@ class SessionFragment : Fragment(R.layout.fragment_session),
         )
 
         popupViewBinding.buttonAddCheckpoint.setOnClickListener {
-            sessionViewModel.addCheckpoint(location)
+            LocationService.addNewCheckpoint(location)
             startStopwatchService(C.ACTION_START_SERVICE, C.STOPWATCH_CHECKPOINT)
             popupWindow.dismiss()
         }
         popupViewBinding.buttonAddWaypoint.setOnClickListener {
-            sessionViewModel.addWaypoint(location)
+            LocationService.addNewWaypoint(location)
             startStopwatchService(C.ACTION_START_SERVICE, C.STOPWATCH_WAYPOINT)
             popupWindow.dismiss()
         }

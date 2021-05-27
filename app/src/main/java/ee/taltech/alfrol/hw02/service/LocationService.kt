@@ -7,10 +7,7 @@ import android.content.Intent
 import android.location.Location
 import android.os.Looper
 import androidx.core.app.NotificationCompat
-import androidx.lifecycle.LifecycleService
-import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.Observer
-import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.*
 import androidx.navigation.NavDeepLinkBuilder
 import com.android.volley.Request
 import com.google.android.gms.location.FusedLocationProviderClient
@@ -42,11 +39,40 @@ class LocationService : LifecycleService() {
     companion object {
         val isRunning = MutableLiveData(false)
         val pathPoints = MutableLiveData<MutableList<LatLng>>(mutableListOf())
+        val checkpoints = MutableLiveData<MutableList<LatLng>>(mutableListOf())
+        val waypoint = MutableLiveData<LatLng>()
         val currentLocation = MutableLiveData<LatLng>()
+
         val totalDistance = MutableLiveData(0.0f)
         val totalAveragePace = MutableLiveData(0.0f)
 
+        val checkpointDistance = MutableLiveData(0.0f)
+        val checkpointAveragePace = MutableLiveData(0.0f)
+
+        val waypointDistance = MutableLiveData(0.0f)
+        val waypointAveragePace = MutableLiveData(0.0f)
+
         private const val MAX_RETRIES = 3
+
+        /**
+         * Add a new checkpoint to the checkpoints list.
+         *
+         * @param location Checkpoint location.
+         */
+        fun addNewCheckpoint(location: LatLng) {
+            checkpoints.value = checkpoints.value?.apply {
+                add(location)
+            } ?: mutableListOf(location)
+        }
+
+        /**
+         * Set a new waypoint.
+         *
+         * @param location Waypoint location.
+         */
+        fun addNewWaypoint(location: LatLng) {
+            waypoint.value = location
+        }
     }
 
     @Inject
