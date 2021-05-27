@@ -204,8 +204,6 @@ class SessionFragment : Fragment(R.layout.fragment_session),
         addAllPathPoints()
         addAllCheckpoints()
         addWaypoint()
-        updateDistance(calculateDistanceFromLastCheckpoint(), SESSION_DATA_CHECKPOINT)
-        updateDistance(calculateDistanceFromWaypoint(), SESSION_DATA_WAYPOINT)
     }
 
     override fun onMapClick(p0: LatLng) {
@@ -301,8 +299,6 @@ class SessionFragment : Fragment(R.layout.fragment_session),
         })
         LocationService.pathPoints.observe(viewLifecycleOwner, {
             updatePathPoints(it)
-            updateDistance(calculateDistanceFromLastCheckpoint(), SESSION_DATA_CHECKPOINT)
-            updateDistance(calculateDistanceFromWaypoint(), SESSION_DATA_WAYPOINT)
         })
         LocationService.checkpoints.observe(viewLifecycleOwner, {
             updateCheckpoints(it)
@@ -319,6 +315,18 @@ class SessionFragment : Fragment(R.layout.fragment_session),
         })
         LocationService.totalAveragePace.observe(viewLifecycleOwner, {
             updatePace(it, SESSION_DATA_TOTAL)
+        })
+        LocationService.checkpointDistance.observe(viewLifecycleOwner, {
+            updateDistance(it, SESSION_DATA_CHECKPOINT)
+        })
+        LocationService.checkpointAveragePace.observe(viewLifecycleOwner, {
+            updatePace(it, SESSION_DATA_CHECKPOINT)
+        })
+        LocationService.waypointDistance.observe(viewLifecycleOwner, {
+            updateDistance(it, SESSION_DATA_WAYPOINT)
+        })
+        LocationService.waypointAveragePace.observe(viewLifecycleOwner, {
+            updatePace(it, SESSION_DATA_WAYPOINT)
         })
 
         StopwatchService.total.observe(viewLifecycleOwner, {

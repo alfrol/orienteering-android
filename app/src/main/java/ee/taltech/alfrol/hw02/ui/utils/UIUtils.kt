@@ -2,11 +2,13 @@ package ee.taltech.alfrol.hw02.ui.utils
 
 import android.Manifest
 import android.content.Context
+import android.location.Location
 import android.text.Editable
 import android.text.TextWatcher
 import android.widget.Toast
 import androidx.annotation.StringRes
 import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.maps.model.LatLng
 import ee.taltech.alfrol.hw02.R
 import pub.devrel.easypermissions.EasyPermissions
 import java.util.concurrent.TimeUnit
@@ -97,4 +99,37 @@ object UIUtils {
             else -> context.getString(R.string.duration, hours, minutes, seconds)
         }
     }
+
+    /**
+     * Calculate the distance between two points.
+     *
+     * @param first Point one.
+     * @param second Point two.
+     * @return Distance between two points in meters.
+     */
+    fun calculateDistance(first: LatLng, second: LatLng): Float {
+        val result = FloatArray(1)
+        Location.distanceBetween(
+            first.latitude,
+            first.longitude,
+            second.latitude,
+            second.longitude,
+            result
+        )
+        return result[0]
+    }
+
+    /**
+     * Calculate the pace.
+     *
+     * pace (min/km) = duration (min) / distance (km).
+     *
+     * @param duration Duration in milliseconds.
+     * @param distance Distance in meters.
+     */
+    fun calculatePace(duration: Long, distance: Float): Float =
+        when (duration > 0L && distance > 0.0f) {
+            true -> TimeUnit.MILLISECONDS.toMinutes(duration) / (distance / 1000.0f)
+            false -> 0.0f
+        }
 }

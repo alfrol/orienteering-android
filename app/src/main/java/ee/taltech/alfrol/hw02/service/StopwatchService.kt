@@ -5,6 +5,7 @@ import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.MutableLiveData
 import ee.taltech.alfrol.hw02.C
 import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
 
 class StopwatchService : LifecycleService() {
@@ -15,7 +16,7 @@ class StopwatchService : LifecycleService() {
         val waypoint = MutableLiveData(0L)
     }
 
-    private val executorService = Executors.newScheduledThreadPool(1)
+    private lateinit var executorService: ScheduledExecutorService
 
     private var isTotalRunning = false
     private var isCheckpointRunning = false
@@ -99,6 +100,7 @@ class StopwatchService : LifecycleService() {
      * Start the executor service with the interval of 1 millisecond.
      */
     private fun run() {
+        executorService = Executors.newScheduledThreadPool(1)
         executorService.scheduleAtFixedRate(
             {
                 if (isTotalRunning) {

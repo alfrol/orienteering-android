@@ -88,6 +88,8 @@ class LocationService : LifecycleService() {
     private lateinit var notificationManager: NotificationManager
 
     private var duration = 0L
+    private var checkpointDuration = 0L
+    private var waypointDuration = 0L
     private var lastWholeSecond = 0L
 
     override fun onCreate() {
@@ -110,7 +112,7 @@ class LocationService : LifecycleService() {
     override fun onDestroy() {
         super.onDestroy()
         fusedLocationProviderClient.removeLocationUpdates(callback)
-        StopwatchService.total.removeObserver(stopwatchObserver)
+        stopObserving()
     }
 
     private fun startService() {
@@ -126,7 +128,7 @@ class LocationService : LifecycleService() {
         isRunning.value = true
         startForeground(C.NOTIFICATION_ID, createNotification())
         requestLocationUpdates()
-        StopwatchService.total.observeForever(stopwatchObserver)
+        startObserving()
     }
 
     private fun stopService() {
@@ -137,8 +139,21 @@ class LocationService : LifecycleService() {
         isRunning.value = false
         stopSelf()
         fusedLocationProviderClient.removeLocationUpdates(callback)
-        StopwatchService.total.removeObserver(stopwatchObserver)
+        stopObserving()
     }
+
+    private fun startObserving() {
+        StopwatchService.total.observeForever(stopwatchObserver)
+        StopwatchService.checkpoint.observeForever(checkpointStopwatchObserver)
+        StopwatchService.waypoint.observeForever(waypointStopwatchObserver)
+    }
+
+    private fun stopObserving() {
+        StopwatchService.total.removeObserver(stopwatchObserver)
+        StopwatchService.checkpoint.removeObserver(checkpointStopwatchObserver)
+        StopwatchService.waypoint.removeObserver(waypointStopwatchObserver)
+    }
+
 
     /**
      * Observer for changes in the total duration.
@@ -155,6 +170,22 @@ class LocationService : LifecycleService() {
 
         // Save for calculating the pace
         duration = it
+    }
+
+    /**
+     * Observer for changes in the checkpoint duration.
+     * Only needed for calculating the pace from the last checkpoint.
+     */
+    private val checkpointStopwatchObserver = Observer<Long> {
+        checkpointDuration = it
+    }
+
+    /**
+     * Observer for changes in the waypoint duration.
+     * Only needed for calculating the pace from the waypoint.
+     */
+    private val waypointStopwatchObserver = Observer<Long> {
+        waypointDuration = it
     }
 
     /**
@@ -264,6 +295,12 @@ class LocationService : LifecycleService() {
 
                 updateDistance()
                 updatePace()
+
+                updateCheckpointDistance()
+                updateCheckpointPace()
+
+                updateWaypointDistance()
+                updateWaypointPace()
             }
         }
     }
@@ -279,17 +316,9 @@ class LocationService : LifecycleService() {
 
             val last = it.last()
             val preLast = it[it.lastIndex - 1]
+            val distance = UIUtils.calculateDistance(last, preLast)
 
-            val result = FloatArray(1)
-            Location.distanceBetween(
-                preLast.latitude,
-                preLast.longitude,
-                last.latitude,
-                last.longitude,
-                result
-            )
-
-            totalDistance.value = totalDistance.value?.plus(result[0]) ?: 0.0f
+            totalDistance.value = totalDistance.value?.plus(distance) ?: 0.0f
         }
     }
 
@@ -298,9 +327,58 @@ class LocationService : LifecycleService() {
      */
     private fun updatePace() {
         totalDistance.value?.let {
-            if (it > 0.0f && duration > 0L) {
-                totalAveragePace.value = TimeUnit.MILLISECONDS.toMinutes(duration) / (it / 1000.0f)
+            totalAveragePace.value = UIUtils.calculatePace(duration, it)
+        }
+    }
+
+    /**
+     * Update distance from the last checkpoint.
+     */
+    private fun updateCheckpointDistance() {
+        checkpoints.value?.let { ckpts ->
+            pathPoints.value?.let { points ->
+                if (ckpts.isNotEmpty() && points.isNotEmpty()) {
+                    val lastPoint = points.last()
+                    val lastCheckpoint = ckpts.last()
+                    val distance = UIUtils.calculateDistance(lastPoint, lastCheckpoint)
+
+                    checkpointDistance.value = distance
+                }
             }
+        }
+    }
+
+    /**
+     * Update average pace from the last checkpoint.
+     */
+    private fun updateCheckpointPace() {
+        checkpointDistance.value?.let {
+            checkpointAveragePace.value = UIUtils.calculatePace(checkpointDuration, it)
+        }
+    }
+
+    /**
+     * Update distance from the waypoint.
+     */
+    private fun updateWaypointDistance() {
+        waypoint.value?.let { wp ->
+            pathPoints.value?.let { points ->
+                if (points.isNotEmpty()) {
+                    val lastPoint = points.last()
+                    val distance = UIUtils.calculateDistance(lastPoint, wp)
+
+                    waypointDistance.value = distance
+                }
+            }
+        }
+    }
+
+    /**
+     * Update average pace from the waypoint.
+     */
+    private fun updateWaypointPace() {
+        waypointDistance.value?.let {
+            waypointAveragePace.value = UIUtils.calculatePace(waypointDuration, it)
         }
     }
 
