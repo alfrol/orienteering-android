@@ -189,7 +189,7 @@ class SessionFragment : Fragment(R.layout.fragment_session),
         }
 
         // Add all path points, checkpoints and a waypoint if the map was recreated
-        addAllPoints()
+        addAllPathPoints()
         addAllCheckpoints()
         addWaypoint()
     }
@@ -335,8 +335,8 @@ class SessionFragment : Fragment(R.layout.fragment_session),
     /**
      * Update current waypoint.
      */
-    private fun updateWaypoint(waypoint: LatLng) {
-        this.waypoint = waypoint
+    private fun updateWaypoint(waypoint: LatLng?) {
+        this.waypoint = waypoint ?: return
         addWaypoint()
     }
 
@@ -436,7 +436,7 @@ class SessionFragment : Fragment(R.layout.fragment_session),
     /**
      * Add all points from the points list to the map.
      */
-    private fun addAllPoints() {
+    private fun addAllPathPoints() {
         if (polyline != null) {
             polyline!!.remove()
         }
