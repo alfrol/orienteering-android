@@ -655,10 +655,12 @@ class SessionFragment : Fragment(R.layout.fragment_session),
 
         popupViewBinding.buttonAddCheckpoint.setOnClickListener {
             sessionViewModel.addCheckpoint(location)
+            startStopwatchService(C.ACTION_START_SERVICE, C.STOPWATCH_CHECKPOINT)
             popupWindow.dismiss()
         }
         popupViewBinding.buttonAddWaypoint.setOnClickListener {
             sessionViewModel.addWaypoint(location)
+            startStopwatchService(C.ACTION_START_SERVICE, C.STOPWATCH_WAYPOINT)
             popupWindow.dismiss()
         }
     }
