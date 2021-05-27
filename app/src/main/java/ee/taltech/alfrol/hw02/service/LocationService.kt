@@ -5,7 +5,9 @@ import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.location.Location
+import android.location.LocationManager
 import android.os.Looper
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.lifecycle.*
 import androidx.navigation.NavDeepLinkBuilder
@@ -53,6 +55,10 @@ class LocationService : LifecycleService() {
         val waypointAveragePace = MutableLiveData(0.0f)
 
         private const val MAX_RETRIES = 3
+
+        // In meters
+        private const val LOCATION_DISTANCE_THRESHOLD = 50.0f
+        private const val LOCATION_ACCURACY_THRESHOLD = 15.0f
 
         /**
          * Add a new checkpoint to the checkpoints list.
@@ -255,7 +261,30 @@ class LocationService : LifecycleService() {
      */
     private val callback = object : LocationCallback() {
         override fun onLocationResult(locationResult: LocationResult) {
-            addPoint(locationResult.lastLocation)
+            val location = locationResult.lastLocation ?: return
+
+            if (location.provider !in arrayOf("fused", LocationManager.GPS_PROVIDER)) {
+                return
+            }
+            if (location.hasAccuracy() && location.accuracy > LOCATION_ACCURACY_THRESHOLD) {
+                return
+            }
+
+            if (pathPoints.value?.isNotEmpty() == true) {
+                val lastPoint = pathPoints.value?.last()
+                if (lastPoint != null) {
+                    val latLng = LatLng(location.latitude, location.longitude)
+                    val distance = UIUtils.calculateDistance(lastPoint, latLng)
+
+                    Log.d("LocationService", "onLocationResult: $distance")
+
+                    if (distance > LOCATION_DISTANCE_THRESHOLD) {
+                        return
+                    }
+                }
+            }
+
+            addPoint(location)
         }
     }
 
@@ -286,22 +315,20 @@ class LocationService : LifecycleService() {
     /**
      * Add a new location point to the path point list.
      */
-    private fun addPoint(location: Location?) {
-        location?.let {
-            val latLng = LatLng(it.latitude, it.longitude)
-            pathPoints.value?.apply {
-                add(latLng)
-                pathPoints.value = this
+    private fun addPoint(location: Location) {
+        val latLng = LatLng(location.latitude, location.longitude)
+        pathPoints.value?.apply {
+            add(latLng)
+            pathPoints.value = this
 
-                updateDistance()
-                updatePace()
+            updateDistance()
+            updatePace()
 
-                updateCheckpointDistance()
-                updateCheckpointPace()
+            updateCheckpointDistance()
+            updateCheckpointPace()
 
-                updateWaypointDistance()
-                updateWaypointPace()
-            }
+            updateWaypointDistance()
+            updateWaypointPace()
         }
     }
 
