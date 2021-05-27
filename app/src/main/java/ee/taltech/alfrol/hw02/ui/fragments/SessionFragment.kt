@@ -50,6 +50,7 @@ class SessionFragment : Fragment(R.layout.fragment_session),
     OnMapReadyCallback,
     GoogleMap.OnMapClickListener,
     GoogleMap.OnMapLongClickListener,
+    GoogleMap.OnCameraMoveStartedListener,
     EasyPermissions.PermissionCallbacks,
     CompassListener.OnCompassUpdateCallback {
 
@@ -84,6 +85,7 @@ class SessionFragment : Fragment(R.layout.fragment_session),
     private lateinit var polylineOptions: PolylineOptions
 
     private var isRunning = false
+    private var isFollowingDevice = true
     private var currentCompassAngle = 0.0f
     private var areSettingsOpen = false
     private var map: GoogleMap? = null
@@ -174,6 +176,7 @@ class SessionFragment : Fragment(R.layout.fragment_session),
         map = googleMap
         map?.setOnMapClickListener(this)
         map?.setOnMapLongClickListener(this)
+        map?.setOnCameraMoveStartedListener(this)
 
         if (UIUtils.hasLocationPermission(requireContext())) {
             map?.isMyLocationEnabled = true
@@ -200,6 +203,12 @@ class SessionFragment : Fragment(R.layout.fragment_session),
 
     override fun onMapLongClick(location: LatLng) {
         showPopup(location)
+    }
+
+    override fun onCameraMoveStarted(reason: Int) {
+        if (reason == GoogleMap.OnCameraMoveStartedListener.REASON_GESTURE) {
+            isFollowingDevice = false
+        }
     }
 
     override fun onCompassUpdate(angle: Float) {
@@ -269,7 +278,8 @@ class SessionFragment : Fragment(R.layout.fragment_session),
             updatePathPoints(it)
         })
         LocationService.currentLocation.observe(viewLifecycleOwner, {
-            updateCurrentLocation(it)
+            isFollowingDevice = true
+            navigateToLocation(it)
         })
 
         sessionViewModel.checkpoints.observe(viewLifecycleOwner, {
@@ -315,13 +325,6 @@ class SessionFragment : Fragment(R.layout.fragment_session),
             this.pathPoints = pathPoints
             addLastPoint()
         }
-    }
-
-    /**
-     * Move the map camera to the current location.
-     */
-    private fun updateCurrentLocation(location: LatLng) {
-        map?.animateCamera(CameraUpdateFactory.newLatLngZoom(location, 15.0f))
     }
 
     /**
@@ -428,8 +431,14 @@ class SessionFragment : Fragment(R.layout.fragment_session),
             if (polyline != null) {
                 polyline!!.remove()
             }
-            polylineOptions.add(pathPoints.last())
+
+            val lastPathPoint = pathPoints.last()
+            polylineOptions.add(lastPathPoint)
             polyline = map?.addPolyline(polylineOptions)
+
+            if (isFollowingDevice) {
+                navigateToLocation(lastPathPoint)
+            }
         }
     }
 
@@ -442,6 +451,10 @@ class SessionFragment : Fragment(R.layout.fragment_session),
         }
         polylineOptions.addAll(pathPoints)
         polyline = map?.addPolyline(polylineOptions)
+
+        if (isFollowingDevice && pathPoints.isNotEmpty()) {
+            navigateToLocation(pathPoints.last())
+        }
     }
 
     /**
@@ -474,6 +487,15 @@ class SessionFragment : Fragment(R.layout.fragment_session),
             val markerOptions = MarkerOptions().position(it)
             waypointMarker = map?.addMarker(markerOptions)
         }
+
+    /**
+     * Navigate the camera to the current location.
+     *
+     * @param location Location on the map to navigate to.
+     */
+    private fun navigateToLocation(location: LatLng) {
+        map?.animateCamera(CameraUpdateFactory.newLatLngZoom(location, 15.0f))
+    }
 
     /**
      * Set the visibility of settings buttons.
