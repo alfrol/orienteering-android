@@ -58,6 +58,10 @@ class SessionFragment : Fragment(R.layout.fragment_session),
     companion object {
         private const val GLOBAL_LOCATION_REQUEST_CODE = 0
         private const val MY_LOCATION_REQUEST_CODE = 1
+
+        private const val SESSION_DATA_TOTAL = 0
+        private const val SESSION_DATA_CHECKPOINT = 1
+        private const val SESSION_DATA_WAYPOINT = 2
     }
 
     @Inject
@@ -299,15 +303,21 @@ class SessionFragment : Fragment(R.layout.fragment_session),
             isFollowingDevice = true
             navigateToLocation(it)
         })
+        LocationService.totalDistance.observe(viewLifecycleOwner, {
+            updateDistance(it, SESSION_DATA_TOTAL)
+        })
+        LocationService.totalAveragePace.observe(viewLifecycleOwner, {
+            updatePace(it, SESSION_DATA_TOTAL)
+        })
 
         StopwatchService.total.observe(viewLifecycleOwner, {
-            updateDuration(it, C.STOPWATCH_TOTAL)
+            updateDuration(it, SESSION_DATA_TOTAL)
         })
         StopwatchService.checkpoint.observe(viewLifecycleOwner, {
-            updateDuration(it, C.STOPWATCH_CHECKPOINT)
+            updateDuration(it, SESSION_DATA_CHECKPOINT)
         })
         StopwatchService.waypoint.observe(viewLifecycleOwner, {
-            updateDuration(it, C.STOPWATCH_WAYPOINT)
+            updateDuration(it, SESSION_DATA_WAYPOINT)
         })
 
         sessionViewModel.checkpoints.observe(viewLifecycleOwner, {
@@ -372,20 +382,55 @@ class SessionFragment : Fragment(R.layout.fragment_session),
     }
 
     /**
+     * Update the distance value.
+     *
+     * @param distance New distance to set to the textview.
+     * @param type Which distance type to update.
+     */
+    private fun updateDistance(distance: Float, type: Int) {
+        val formattedDistance = UIUtils.formatDistance(requireContext(), distance)
+
+        with(binding) {
+            when (type) {
+                SESSION_DATA_TOTAL -> totalDistance.text = formattedDistance
+                SESSION_DATA_CHECKPOINT -> checkpointDistance.text = formattedDistance
+                SESSION_DATA_WAYPOINT -> waypointDistance.text = formattedDistance
+            }
+        }
+    }
+
+    /**
+     * Update the average pace.
+     *
+     * @param pace New pace to set to the textview.
+     * @param type Which pace type to update.
+     */
+    private fun updatePace(pace: Float, type: Int) {
+        val formattedPace = getString(R.string.pace, pace)
+
+        with(binding) {
+            when (type) {
+                SESSION_DATA_TOTAL -> totalPace.text = formattedPace
+                SESSION_DATA_CHECKPOINT -> checkpointPace.text = formattedPace
+                SESSION_DATA_WAYPOINT -> waypointPace.text = formattedPace
+            }
+        }
+    }
+
+    /**
      * Update the duration value.
      *
      * @param duration New duration to set to the textview.
-     * @param type Which duration to update. Should be one of the
-     * [C.STOPWATCH_TOTAL], [C.STOPWATCH_CHECKPOINT], [C.STOPWATCH_WAYPOINT]
+     * @param type Which duration type to update.
      */
     private fun updateDuration(duration: Long, type: Int) {
         val durationFormatted = UIUtils.formatDuration(requireContext(), duration)
 
         with(binding) {
             when (type) {
-                C.STOPWATCH_TOTAL -> totalDuration.text = durationFormatted
-                C.STOPWATCH_CHECKPOINT -> checkpointDuration.text = durationFormatted
-                C.STOPWATCH_WAYPOINT -> waypointDuration.text = durationFormatted
+                SESSION_DATA_TOTAL -> totalDuration.text = durationFormatted
+                SESSION_DATA_CHECKPOINT -> checkpointDuration.text = durationFormatted
+                SESSION_DATA_WAYPOINT -> waypointDuration.text = durationFormatted
             }
         }
 

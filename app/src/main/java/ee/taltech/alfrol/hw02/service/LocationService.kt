@@ -1,7 +1,6 @@
 package ee.taltech.alfrol.hw02.service
 
 import android.annotation.SuppressLint
-import android.app.Notification
 import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
@@ -44,7 +43,8 @@ class LocationService : LifecycleService() {
         val isRunning = MutableLiveData(false)
         val pathPoints = MutableLiveData<MutableList<LatLng>>(mutableListOf())
         val currentLocation = MutableLiveData<LatLng>()
-        val duration = MutableLiveData(0L)
+        val totalDistance = MutableLiveData(0.0f)
+        val totalAveragePace = MutableLiveData(0.0f)
 
         private const val MAX_RETRIES = 3
     }
@@ -61,6 +61,7 @@ class LocationService : LifecycleService() {
     private lateinit var fusedLocationProviderClient: FusedLocationProviderClient
     private lateinit var notificationManager: NotificationManager
 
+    private var duration = 0L
     private var lastWholeSecond = 0L
 
     override fun onCreate() {
@@ -121,10 +122,13 @@ class LocationService : LifecycleService() {
     private val stopwatchObserver = Observer<Long> {
         if (it >= lastWholeSecond + TimeUnit.SECONDS.toMillis(1)) {
             lastWholeSecond = it
-            val durationFormatted = UIUtils.formatDuration(this, it, false)
-            val notification = createNotification(durationFormatted)
+            val notificationText = getNotificationText()
+            val notification = createNotification(notificationText)
             notificationManager.notify(C.NOTIFICATION_ID, notification)
         }
+
+        // Save for calculating the pace
+        duration = it
     }
 
     /**
@@ -231,6 +235,45 @@ class LocationService : LifecycleService() {
             pathPoints.value?.apply {
                 add(latLng)
                 pathPoints.value = this
+
+                updateDistance()
+                updatePace()
+            }
+        }
+    }
+
+    /**
+     * Update the total tracked distance.
+     */
+    private fun updateDistance() {
+        pathPoints.value?.let {
+            if (it.size < 2) {
+                return@let
+            }
+
+            val last = it.last()
+            val preLast = it[it.lastIndex - 1]
+
+            val result = FloatArray(1)
+            Location.distanceBetween(
+                preLast.latitude,
+                preLast.longitude,
+                last.latitude,
+                last.longitude,
+                result
+            )
+
+            totalDistance.value = totalDistance.value?.plus(result[0]) ?: 0.0f
+        }
+    }
+
+    /**
+     * Update the average pace.
+     */
+    private fun updatePace() {
+        totalDistance.value?.let {
+            if (it > 0.0f && duration > 0L) {
+                totalAveragePace.value = TimeUnit.MILLISECONDS.toMinutes(duration) / (it / 1000.0f)
             }
         }
     }
@@ -238,14 +281,13 @@ class LocationService : LifecycleService() {
     /**
      * Create a new notification.
      */
-    private fun createNotification(text: String? = null): Notification {
-        return NotificationCompat.Builder(this, C.NOTIFICATION_CHANNEL_ID)
+    private fun createNotification(text: String = "") =
+        NotificationCompat.Builder(this, C.NOTIFICATION_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(getString(R.string.app_name))
             .setContentText(text)
             .setContentIntent(createPendingIntent())
             .build()
-    }
 
     /**
      * Create a pending intent for use in notification.
@@ -256,4 +298,14 @@ class LocationService : LifecycleService() {
         .setGraph(R.navigation.nav_graph)
         .setDestination(R.id.sessionFragment)
         .createPendingIntent()
+
+    /**
+     * Construct a notification text.
+     */
+    private fun getNotificationText(): String {
+        val durationText = UIUtils.formatDuration(this, lastWholeSecond, false)
+        val distanceText = UIUtils.formatDistance(this, totalDistance.value ?: 0.0f)
+        val paceText = getString(R.string.pace, totalAveragePace.value ?: 0.0f)
+        return "$distanceText | $durationText | $paceText"
+    }
 }

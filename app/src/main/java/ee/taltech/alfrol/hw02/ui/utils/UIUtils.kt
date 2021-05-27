@@ -63,6 +63,18 @@ object UIUtils {
     }
 
     /**
+     * Get the correct formatted string for the given distance value.
+     *
+     * @param context The context to use for requesting a string resource.
+     * @param distance Distance in meters.
+     * @return Formatted distance as string.
+     */
+    fun formatDistance(context: Context, distance: Float) = when (distance < 1000.0f) {
+        true -> context.getString(R.string.distance_meters, distance.toInt())
+        false -> context.getString(R.string.distance_kilometers, distance / 1000.0f)
+    }
+
+    /**
      * Format the given duration in milliseconds to stopwatch compatible format.
      *
      * @param context The context to use for requesting a string resource.
