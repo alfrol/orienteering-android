@@ -379,45 +379,41 @@ class LocationService : LifecycleService() {
      */
     @SuppressLint("NewApi")
     fun saveLocation(location: Location, type: String) {
-        lifecycleScope.launch {
-            val recordedAtMillis = System.currentTimeMillis()
-            val recordedAt = UIUtils.timeMillisToIsoOffset(System.currentTimeMillis())
+        val recordedAtMillis = System.currentTimeMillis()
+        val recordedAt = UIUtils.timeMillisToIsoOffset(System.currentTimeMillis())
 
-            // Don't save waypoints to database.
-            if (type != C.WP_TYPE_ID) {
-                val locationPoint = LocationPoint(
-                    sessionId = session.id,
-                    latitude = location.latitude,
-                    longitude = location.longitude,
-                    recordedAt = recordedAtMillis,
-                    type = type
-                )
-
-                saveLocationToDb(locationPoint)
-            }
-
-            val locationJson = JSONObject().apply {
-                put(C.JSON_RECORDED_AT_KEY, recordedAt)
-                put(C.JSON_LATITUDE_KEY, location.latitude)
-                put(C.JSON_LONGITUDE_KEY, location.longitude)
-                put(C.JSON_GPS_SESSION_ID, session.externalId)
-                put(C.JSON_GPS_LOCATION_TYPE_ID, type)
-
-                // Only save altitude and accuracy in case of regular location point
-                if (type == C.LOC_TYPE_ID) {
-                    put(C.JSON_ALTITUDE_KEY, location.altitude)
-                    put(C.JSON_ACCURACY_KEY, location.accuracy)
-
-                    val verticalAcc = when (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        true -> location.verticalAccuracyMeters
-                        false -> location.accuracy
-                    }
-                    put(C.JSON_VERTICAL_ACCURACY, verticalAcc)
-                }
-            }
-
-            saveLocationToBackend(locationJson)
+        // Don't save waypoints to database.
+        if (type != C.WP_TYPE_ID) {
+            val locationPoint = LocationPoint(
+                sessionId = session.id,
+                latitude = location.latitude,
+                longitude = location.longitude,
+                recordedAt = recordedAtMillis,
+                type = type
+            )
+            saveLocationToDb(locationPoint)
         }
+
+        val locationJson = JSONObject().apply {
+            put(C.JSON_RECORDED_AT_KEY, recordedAt)
+            put(C.JSON_LATITUDE_KEY, location.latitude)
+            put(C.JSON_LONGITUDE_KEY, location.longitude)
+            put(C.JSON_GPS_SESSION_ID, session.externalId)
+            put(C.JSON_GPS_LOCATION_TYPE_ID, type)
+
+            // Only save altitude and accuracy in case of regular location point
+            if (type == C.LOC_TYPE_ID) {
+                put(C.JSON_ALTITUDE_KEY, location.altitude)
+                put(C.JSON_ACCURACY_KEY, location.accuracy)
+
+                val verticalAcc = when (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    true -> location.verticalAccuracyMeters
+                    false -> location.accuracy
+                }
+                put(C.JSON_VERTICAL_ACCURACY, verticalAcc)
+            }
+        }
+        saveLocationToBackend(locationJson)
     }
 
     /**
@@ -425,8 +421,10 @@ class LocationService : LifecycleService() {
      *
      * @param location The location to save to the db.
      */
-    private suspend fun saveLocationToDb(location: LocationPoint) {
-        locationPointDao.insert(location)
+    private fun saveLocationToDb(location: LocationPoint) {
+        lifecycleScope.launchWhenCreated {
+            locationPointDao.insert(location)
+        }
     }
 
     /**
@@ -434,18 +432,20 @@ class LocationService : LifecycleService() {
      *
      * @param location The location to send to the backend.
      */
-    private suspend fun saveLocationToBackend(location: JSONObject) {
-        val token = settingsManager.token.firstOrNull() ?: return
+    private fun saveLocationToBackend(location: JSONObject) {
+        lifecycleScope.launchWhenCreated {
+            val token = settingsManager.token.firstOrNull() ?: return@launchWhenCreated
 
-        val locationRequest = AuthorizedJsonObjectRequest(
-            Request.Method.POST, C.API_LOCATIONS_URL, location,
-            {},
-            {
-                // TODO: Do something when saving fails
-            },
-            token
-        )
-        restHandler.addRequest(locationRequest)
+            val locationRequest = AuthorizedJsonObjectRequest(
+                Request.Method.POST, C.API_LOCATIONS_URL, location,
+                {},
+                {
+                    // TODO: Do something when saving fails
+                },
+                token
+            )
+            restHandler.addRequest(locationRequest)
+        }
     }
 
     /**
