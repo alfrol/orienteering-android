@@ -59,8 +59,6 @@ class LocationService : LifecycleService() {
     private lateinit var fusedLocationProviderClient: FusedLocationProviderClient
     private lateinit var notificationManager: NotificationManager
 
-    private val durationMillis = MutableLiveData(0L)
-
     override fun onCreate() {
         super.onCreate()
         notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -85,7 +83,8 @@ class LocationService : LifecycleService() {
             session = Session()
             sessionDao.insert(session)
         }
-        saveSessionToBackend(session)
+        // TODO: Uncomment this
+        //saveSessionToBackend(session)
 
         isRunning.value = true
         startForeground(C.NOTIFICATION_ID, createNotification())

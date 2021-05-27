@@ -7,7 +7,9 @@ import android.text.TextWatcher
 import android.widget.Toast
 import androidx.annotation.StringRes
 import com.google.android.gms.location.LocationRequest
+import ee.taltech.alfrol.hw02.R
 import pub.devrel.easypermissions.EasyPermissions
+import java.util.concurrent.TimeUnit
 
 /**
  * A collection of utility functions for operating with the UI.
@@ -57,6 +59,30 @@ object UIUtils {
             this.interval = interval
             this.fastestInterval = fastestInterval
             priority = LocationRequest.PRIORITY_HIGH_ACCURACY
+        }
+    }
+
+    /**
+     * Format the given duration in milliseconds to stopwatch compatible format.
+     *
+     * @param context The context to use for requesting a string resource.
+     * @param ms Time in milliseconds to format.
+     * @param withMillis Whether the format should be precise (with millis)
+     * @return Formatted time as string.
+     */
+    fun formatDuration(context: Context, ms: Long, withMillis: Boolean = true): String {
+        var remaining = ms
+        val hours = TimeUnit.MILLISECONDS.toHours(remaining)
+        remaining -= TimeUnit.HOURS.toMillis(hours)
+        val minutes = TimeUnit.MILLISECONDS.toMinutes(remaining)
+        remaining -= TimeUnit.MINUTES.toMillis(minutes)
+        val seconds = TimeUnit.MILLISECONDS.toSeconds(remaining)
+        remaining -= TimeUnit.SECONDS.toMillis(seconds)
+        remaining /= 10
+
+        return when (withMillis) {
+            true -> context.getString(R.string.duration_millis, hours, minutes, seconds, remaining)
+            else -> context.getString(R.string.duration, hours, minutes, seconds)
         }
     }
 }

@@ -35,6 +35,7 @@ import ee.taltech.alfrol.hw02.data.SettingsManager
 import ee.taltech.alfrol.hw02.databinding.FragmentSessionBinding
 import ee.taltech.alfrol.hw02.databinding.SessionPopupMenuBinding
 import ee.taltech.alfrol.hw02.service.LocationService
+import ee.taltech.alfrol.hw02.service.StopwatchService
 import ee.taltech.alfrol.hw02.ui.states.CompassState
 import ee.taltech.alfrol.hw02.ui.utils.CompassListener
 import ee.taltech.alfrol.hw02.ui.utils.UIUtils
@@ -166,7 +167,10 @@ class SessionFragment : Fragment(R.layout.fragment_session),
 
     override fun onPermissionsGranted(requestCode: Int, perms: List<String>) {
         when (requestCode) {
-            GLOBAL_LOCATION_REQUEST_CODE -> startLocationService(C.ACTION_START_SERVICE)
+            GLOBAL_LOCATION_REQUEST_CODE -> {
+                startLocationService(C.ACTION_START_SERVICE)
+                startStopwatchService(C.ACTION_START_SERVICE, C.STOPWATCH_TOTAL)
+            }
             MY_LOCATION_REQUEST_CODE -> startLocationService(C.ACTION_GET_CURRENT_LOCATION)
         }
     }
@@ -268,6 +272,20 @@ class SessionFragment : Fragment(R.layout.fragment_session),
         }
 
     /**
+     * Start the [StopwatchService].
+     *
+     * @param action One of the [C.ACTION_START_SERVICE], [C.ACTION_STOP_SERVICE].
+     * @param stopwatchType The type of stopwatch to start. Should be one of the
+     * [C.STOPWATCH_TOTAL], [C.STOPWATCH_CHECKPOINT], [C.STOPWATCH_WAYPOINT]
+     */
+    private fun startStopwatchService(action: String, stopwatchType: Int) =
+        Intent(requireContext(), StopwatchService::class.java).also {
+            it.action = action
+            it.putExtra(C.STOPWATCH_TYPE_KEY, stopwatchType)
+            requireContext().startService(it)
+        }
+
+    /**
      * Start observing the changes from the [LocationService] and [SessionViewModel].
      */
     private fun startObserving() {
@@ -280,6 +298,16 @@ class SessionFragment : Fragment(R.layout.fragment_session),
         LocationService.currentLocation.observe(viewLifecycleOwner, {
             isFollowingDevice = true
             navigateToLocation(it)
+        })
+
+        StopwatchService.total.observe(viewLifecycleOwner, {
+            updateDuration(it, C.STOPWATCH_TOTAL)
+        })
+        StopwatchService.checkpoint.observe(viewLifecycleOwner, {
+            updateDuration(it, C.STOPWATCH_CHECKPOINT)
+        })
+        StopwatchService.waypoint.observe(viewLifecycleOwner, {
+            updateDuration(it, C.STOPWATCH_WAYPOINT)
         })
 
         sessionViewModel.checkpoints.observe(viewLifecycleOwner, {
@@ -344,6 +372,26 @@ class SessionFragment : Fragment(R.layout.fragment_session),
     }
 
     /**
+     * Update the duration value.
+     *
+     * @param duration New duration to set to the textview.
+     * @param type Which duration to update. Should be one of the
+     * [C.STOPWATCH_TOTAL], [C.STOPWATCH_CHECKPOINT], [C.STOPWATCH_WAYPOINT]
+     */
+    private fun updateDuration(duration: Long, type: Int) {
+        val durationFormatted = UIUtils.formatDuration(requireContext(), duration)
+
+        with(binding) {
+            when (type) {
+                C.STOPWATCH_TOTAL -> totalDuration.text = durationFormatted
+                C.STOPWATCH_CHECKPOINT -> checkpointDuration.text = durationFormatted
+                C.STOPWATCH_WAYPOINT -> waypointDuration.text = durationFormatted
+            }
+        }
+
+    }
+
+    /**
      * Update the compass state (enable or disable it).
      */
     private fun updateCompassState(compassState: CompassState) {
@@ -374,6 +422,7 @@ class SessionFragment : Fragment(R.layout.fragment_session),
             checkLocationSettings()
         } else {
             startLocationService(C.ACTION_STOP_SERVICE)
+            startStopwatchService(C.ACTION_STOP_SERVICE, C.STOPWATCH_TOTAL)
         }
 
         binding.loadingSpinner.visibility = View.VISIBLE
@@ -574,6 +623,7 @@ class SessionFragment : Fragment(R.layout.fragment_session),
         task.addOnSuccessListener {
             startLocationService(C.ACTION_START_SERVICE)
             startLocationService(C.ACTION_GET_CURRENT_LOCATION)
+            startStopwatchService(C.ACTION_START_SERVICE, C.STOPWATCH_TOTAL)
         }
 
         task.addOnFailureListener {

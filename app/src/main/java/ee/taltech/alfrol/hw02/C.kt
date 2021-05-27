@@ -30,6 +30,12 @@ object C {
     const val ACTION_STOP_SERVICE = "STOP_SERVICE"
     const val ACTION_GET_CURRENT_LOCATION = "GET_CURRENT_LOCATION"
 
+    const val STOPWATCH_TYPE_KEY = "stopwatch_type"
+
+    const val STOPWATCH_TOTAL = 0
+    const val STOPWATCH_CHECKPOINT = 1
+    const val STOPWATCH_WAYPOINT = 2
+
     const val DEFAULT_LOCATION_UPDATE_INTERVAL = 10000L
     const val DEFAULT_LOCATION_UPDATE_FASTEST_INTERVAL = 5000L
 }

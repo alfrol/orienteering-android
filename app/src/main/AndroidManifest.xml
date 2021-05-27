@@ -23,6 +23,10 @@
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="location" />
+        <service
+            android:name=".service.StopwatchService"
+            android:enabled="true"
+            android:exported="false" />
         <!--
              The API key for Google Maps-based APIs is defined as a string resource.
              (See the file "res/values/google_maps_api.xml").
