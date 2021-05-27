@@ -4,7 +4,6 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.graphics.Point
-import android.location.Location
 import android.os.Bundle
 import android.view.Gravity
 import android.view.LayoutInflater
@@ -556,7 +555,10 @@ class SessionFragment : Fragment(R.layout.fragment_session),
         if (polyline != null) {
             polyline!!.remove()
         }
-        polylineOptions.addAll(pathPoints)
+        polylineOptions = PolylineOptions()
+            .color(ContextCompat.getColor(requireContext(), R.color.primary))
+            .width(10.0f)
+            .addAll(pathPoints)
         polyline = map?.addPolyline(polylineOptions)
 
         if (isFollowingDevice && pathPoints.isNotEmpty()) {
@@ -584,31 +586,6 @@ class SessionFragment : Fragment(R.layout.fragment_session),
         }
 
     /**
-     * Calculate the distance between the last checkpoint and the last path point.
-     *
-     * @return Distance in meters.
-     */
-    private fun calculateDistanceFromLastCheckpoint(): Float {
-        if (checkpoints.isNotEmpty() && pathPoints.isNotEmpty()) {
-            val lastPoint = pathPoints.last()
-            val lastCheckpoint = checkpoints.last()
-
-            val result = FloatArray(1)
-            Location.distanceBetween(
-                lastPoint.latitude,
-                lastPoint.longitude,
-                lastCheckpoint.latitude,
-                lastCheckpoint.longitude,
-                result
-            )
-
-            return result[0]
-        }
-
-        return 0.0f
-    }
-
-    /**
      * Add a new waypoint marker to the map.
      */
     private fun addWaypoint() =
@@ -619,30 +596,6 @@ class SessionFragment : Fragment(R.layout.fragment_session),
             val markerOptions = MarkerOptions().position(it)
             waypointMarker = map?.addMarker(markerOptions)
         }
-
-    /**
-     * Calculate the distance between the waypoint and the last path point.
-     *
-     * @return Distance in meters.
-     */
-    private fun calculateDistanceFromWaypoint(): Float {
-        if (waypoint != null && pathPoints.isNotEmpty()) {
-            val lastPoint = pathPoints.last()
-
-            val result = FloatArray(1)
-            Location.distanceBetween(
-                lastPoint.latitude,
-                lastPoint.longitude,
-                waypoint!!.latitude,
-                waypoint!!.longitude,
-                result
-            )
-
-            return result[0]
-        }
-
-        return 0.0f
-    }
 
     /**
      * Navigate the camera to the current location.
