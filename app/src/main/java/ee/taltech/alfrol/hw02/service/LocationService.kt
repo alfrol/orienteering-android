@@ -406,7 +406,7 @@ class LocationService : LifecycleService() {
         )
 
         lifecycleScope.launchWhenCreated {
-            sessionDao.update(session)
+            sessionDao.update(updatedSession)
         }
     }
 

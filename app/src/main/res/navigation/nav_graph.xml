@@ -15,6 +15,9 @@
         <action
             android:id="@+id/action_start_session"
             app:destination="@id/sessionFragment" />
+        <action
+            android:id="@+id/action_view_history"
+            app:destination="@id/historyFragment" />
     </fragment>
     <navigation android:id="@+id/navigation"
         app:startDestination="@id/welcomeFragment">
@@ -53,4 +56,9 @@
         android:name="ee.taltech.alfrol.hw02.ui.fragments.SessionFragment"
         android:label="fragment_session"
         tools:layout="@layout/fragment_session" />
+    <fragment
+        android:id="@+id/historyFragment"
+        android:name="ee.taltech.alfrol.hw02.ui.fragments.HistoryFragment"
+        android:label="fragment_history"
+        tools:layout="@layout/fragment_history" />
 </navigation>

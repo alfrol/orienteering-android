@@ -8,6 +8,9 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface SessionDao {
 
+    @Query("SELECT * FROM Session ORDER BY recorded_at DESC")
+    fun findAll(): Flow<List<Session>>
+
     @Transaction
     @Query("SELECT * FROM Session WHERE external_id = :id")
     fun findByExternalId(id: String): Flow<List<SessionWithLocationPoints>>

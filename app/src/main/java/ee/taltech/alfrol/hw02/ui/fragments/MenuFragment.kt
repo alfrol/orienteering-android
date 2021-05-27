@@ -66,6 +66,10 @@ class MenuFragment : Fragment(R.layout.fragment_menu) {
                 val actionStartSession = MenuFragmentDirections.actionStartSession()
                 findNavController().navigate(actionStartSession)
             }
+            sessionsButtonLayout.setOnClickListener {
+                val viewHistoryAction = MenuFragmentDirections.actionViewHistory()
+                findNavController().navigate(viewHistoryAction)
+            }
         }
     }
 

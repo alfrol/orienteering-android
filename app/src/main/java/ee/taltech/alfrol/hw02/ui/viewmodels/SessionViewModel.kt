@@ -1,15 +1,22 @@
 package ee.taltech.alfrol.hw02.ui.viewmodels
 
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.*
+import dagger.hilt.android.lifecycle.HiltViewModel
 import ee.taltech.alfrol.hw02.R
+import ee.taltech.alfrol.hw02.data.dao.SessionDao
 import ee.taltech.alfrol.hw02.ui.states.CompassState
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class SessionViewModel : ViewModel() {
+@HiltViewModel
+class SessionViewModel @Inject constructor(
+    private val sessionDao: SessionDao
+) : ViewModel() {
 
     private var _compassState = MutableLiveData<CompassState>()
     val compassState: LiveData<CompassState> = _compassState
+
+    val sessions = sessionDao.findAll().asLiveData()
 
     /**
      * Toggle the compass enabled state.

@@ -42,4 +42,12 @@ data class Session(
                 .ofInstant(instant, ZoneId.systemDefault())
                 .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
         }
+
+    val recordedAtIsoShort: String
+        get() {
+            val instant = Instant.ofEpochMilli(recordedAt)
+            return OffsetDateTime
+                .ofInstant(instant, ZoneId.systemDefault())
+                .format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+        }
 }
