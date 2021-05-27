@@ -8,6 +8,7 @@ object C {
     const val API_LOGIN_URL = "$API_BASE/account/login"
     const val API_REGISTRATION_URL = "$API_BASE/account/register"
     const val API_SESSIONS_URL = "$API_BASE/GpsSessions"
+    const val API_LOCATIONS_URL = "$API_BASE/GpsLocations"
 
     const val JSON_FIRST_NAME_KEY = "firstName"
     const val JSON_LAST_NAME_KEY = "lastName"
@@ -21,6 +22,14 @@ object C {
     const val JSON_PACE_MIN_KEY = "paceMin"
     const val JSON_PACE_MAX_KEY = "paceMax"
     const val JSON_ID_KEY = "id"
+
+    const val JSON_LATITUDE_KEY = "latitude"
+    const val JSON_LONGITUDE_KEY = "longitude"
+    const val JSON_ACCURACY_KEY = "accuracy"
+    const val JSON_ALTITUDE_KEY = "altitude"
+    const val JSON_VERTICAL_ACCURACY = "verticalAccuracy"
+    const val JSON_GPS_SESSION_ID = "gpsSessionId"
+    const val JSON_GPS_LOCATION_TYPE_ID = "gpsLocationTypeId"
 
     const val NOTIFICATION_CHANNEL_ID = "gps_sport_map"
     const val NOTIFICATION_CHANNEL_NAME = "GPS Sport Map Channel"
@@ -38,4 +47,8 @@ object C {
 
     const val DEFAULT_LOCATION_UPDATE_INTERVAL = 10000L
     const val DEFAULT_LOCATION_UPDATE_FASTEST_INTERVAL = 5000L
+
+    const val LOC_TYPE_ID = "00000000-0000-0000-0000-000000000001"
+    const val WP_TYPE_ID = "00000000-0000-0000-0000-000000000002"
+    const val CP_TYPE_ID = "00000000-0000-0000-0000-000000000003"
 }

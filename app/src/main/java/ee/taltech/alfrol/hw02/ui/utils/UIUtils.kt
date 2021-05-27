@@ -11,6 +11,10 @@ import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.maps.model.LatLng
 import ee.taltech.alfrol.hw02.R
 import pub.devrel.easypermissions.EasyPermissions
+import java.time.Instant
+import java.time.OffsetDateTime
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.concurrent.TimeUnit
 
 /**
@@ -132,4 +136,15 @@ object UIUtils {
             true -> TimeUnit.MILLISECONDS.toMinutes(duration) / (distance / 1000.0f)
             false -> 0.0f
         }
+
+    /**
+     * Get the time in milliseconds formatted ans ISO-8601 with offset.
+     *
+     * @param ms Time in milliseconds to format.
+     * @return Time formatted as string.
+     */
+    fun timeMillisToIsoOffset(ms: Long): String =
+        OffsetDateTime.ofInstant(Instant.ofEpochMilli(ms), ZoneId.systemDefault()).format(
+            DateTimeFormatter.ISO_OFFSET_DATE_TIME
+        )
 }

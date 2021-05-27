@@ -6,10 +6,12 @@ import android.content.Context
 import android.content.Intent
 import android.location.Location
 import android.location.LocationManager
+import android.net.ConnectivityManager
+import android.os.Build
 import android.os.Looper
-import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.lifecycle.*
+import androidx.lifecycle.Observer
 import androidx.navigation.NavDeepLinkBuilder
 import com.android.volley.Request
 import com.google.android.gms.location.FusedLocationProviderClient
@@ -23,7 +25,9 @@ import ee.taltech.alfrol.hw02.R
 import ee.taltech.alfrol.hw02.api.AuthorizedJsonObjectRequest
 import ee.taltech.alfrol.hw02.api.RestHandler
 import ee.taltech.alfrol.hw02.data.SettingsManager
+import ee.taltech.alfrol.hw02.data.dao.LocationPointDao
 import ee.taltech.alfrol.hw02.data.dao.SessionDao
+import ee.taltech.alfrol.hw02.data.model.LocationPoint
 import ee.taltech.alfrol.hw02.data.model.Session
 import ee.taltech.alfrol.hw02.ui.fragments.SessionFragment
 import ee.taltech.alfrol.hw02.ui.utils.UIUtils
@@ -32,6 +36,7 @@ import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.json.JSONObject
+import java.util.*
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
@@ -88,10 +93,15 @@ class LocationService : LifecycleService() {
     lateinit var sessionDao: SessionDao
 
     @Inject
+    lateinit var locationPointDao: LocationPointDao
+
+    @Inject
     lateinit var restHandler: RestHandler
 
     private lateinit var fusedLocationProviderClient: FusedLocationProviderClient
     private lateinit var notificationManager: NotificationManager
+    private lateinit var connectivityManager: ConnectivityManager
+    private lateinit var session: Session
 
     private var duration = 0L
     private var checkpointDuration = 0L
@@ -100,8 +110,9 @@ class LocationService : LifecycleService() {
 
     override fun onCreate() {
         super.onCreate()
-        notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this)
+        notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -118,18 +129,17 @@ class LocationService : LifecycleService() {
     override fun onDestroy() {
         super.onDestroy()
         fusedLocationProviderClient.removeLocationUpdates(callback)
-        stopObserving()
     }
 
     private fun startService() {
-        val session: Session
-
         runBlocking {
-            session = Session()
-            sessionDao.insert(session)
+            val rawSession = Session()
+            val id = sessionDao.insert(rawSession)
+
+            // All other values remain default
+            session = Session(id = id, recordedAt = rawSession.recordedAt)
         }
-        // TODO: Uncomment this
-        //saveSessionToBackend(session)
+        saveSessionToBackend()
 
         isRunning.value = true
         startForeground(C.NOTIFICATION_ID, createNotification())
@@ -138,28 +148,52 @@ class LocationService : LifecycleService() {
     }
 
     private fun stopService() {
-        lifecycleScope.launchWhenCreated {
-            settingsManager.removeSessionId()
-        }
-
         isRunning.value = false
         stopSelf()
         fusedLocationProviderClient.removeLocationUpdates(callback)
-        stopObserving()
     }
 
     private fun startObserving() {
-        StopwatchService.total.observeForever(stopwatchObserver)
-        StopwatchService.checkpoint.observeForever(checkpointStopwatchObserver)
-        StopwatchService.waypoint.observeForever(waypointStopwatchObserver)
+        checkpoints.observe(this, checkpointsObserver)
+        waypoint.observe(this, waypointObserver)
+
+        StopwatchService.total.observe(this, stopwatchObserver)
+        StopwatchService.checkpoint.observe(this, checkpointStopwatchObserver)
+        StopwatchService.waypoint.observe(this, waypointStopwatchObserver)
     }
 
-    private fun stopObserving() {
-        StopwatchService.total.removeObserver(stopwatchObserver)
-        StopwatchService.checkpoint.removeObserver(checkpointStopwatchObserver)
-        StopwatchService.waypoint.removeObserver(waypointStopwatchObserver)
+    /**
+     * Observer for changes in [checkpoints].
+     * Used for saving the last checkpoint when updated.
+     */
+    private val checkpointsObserver = Observer<MutableList<LatLng>> {
+        it?.let { ckpts ->
+            if (ckpts.isNotEmpty()) {
+                val lastCheckpoint = ckpts.last()
+
+                // Creating a dummy location here, ugly but it's easier to do like that
+                val location = Location("").apply {
+                    latitude = lastCheckpoint.latitude
+                    longitude = lastCheckpoint.longitude
+                }
+
+                saveLocation(location, C.CP_TYPE_ID)
+            }
+        }
     }
 
+    /**
+     * Observer for changes in [waypoint].
+     * Used for saving the waypoint when it's updated.
+     */
+    private val waypointObserver = Observer<LatLng> {
+        it?.let { wp ->
+            val location = Location("").apply {
+                latitude = wp.latitude
+                longitude = wp.longitude
+            }
+        }
+    }
 
     /**
      * Observer for changes in the total duration.
@@ -192,38 +226,6 @@ class LocationService : LifecycleService() {
      */
     private val waypointStopwatchObserver = Observer<Long> {
         waypointDuration = it
-    }
-
-    /**
-     * Try to save the new session to the backend.
-     * Doesn't do anything on failure.
-     */
-    private fun saveSessionToBackend(session: Session) {
-        lifecycleScope.launchWhenCreated {
-            val token = settingsManager.token.firstOrNull() ?: return@launchWhenCreated
-
-            val requestBody = JSONObject()
-            requestBody.put(C.JSON_NAME_KEY, session.name)
-            requestBody.put(C.JSON_DESCRIPTION_KEY, session.description)
-            requestBody.put(C.JSON_RECORDED_AT_KEY, session.recordedAtIso)
-            requestBody.put(C.JSON_PACE_MIN_KEY, 420)
-            requestBody.put(C.JSON_PACE_MAX_KEY, 600)
-
-            val sessionRequest = AuthorizedJsonObjectRequest(
-                Request.Method.POST, C.API_SESSIONS_URL, requestBody,
-                { response ->
-                    val id = response.getString(C.JSON_ID_KEY)
-
-                    // Save backend session id for later use
-                    lifecycleScope.launch {
-                        settingsManager.saveSessionId(id)
-                    }
-                },
-                {},
-                token
-            )
-            restHandler.addRequest(sessionRequest)
-        }
     }
 
     /**
@@ -263,20 +265,18 @@ class LocationService : LifecycleService() {
         override fun onLocationResult(locationResult: LocationResult) {
             val location = locationResult.lastLocation ?: return
 
+            // Validate whether the new location is good enough.
             if (location.provider !in arrayOf("fused", LocationManager.GPS_PROVIDER)) {
                 return
             }
             if (location.hasAccuracy() && location.accuracy > LOCATION_ACCURACY_THRESHOLD) {
                 return
             }
-
             if (pathPoints.value?.isNotEmpty() == true) {
                 val lastPoint = pathPoints.value?.last()
                 if (lastPoint != null) {
                     val latLng = LatLng(location.latitude, location.longitude)
                     val distance = UIUtils.calculateDistance(lastPoint, latLng)
-
-                    Log.d("LocationService", "onLocationResult: $distance")
 
                     if (distance > LOCATION_DISTANCE_THRESHOLD) {
                         return
@@ -285,6 +285,7 @@ class LocationService : LifecycleService() {
             }
 
             addPoint(location)
+            saveLocation(location, C.LOC_TYPE_ID)
         }
     }
 
@@ -330,6 +331,121 @@ class LocationService : LifecycleService() {
             updateWaypointDistance()
             updateWaypointPace()
         }
+    }
+
+    /**
+     * Try to save the new session to the backend.
+     * Doesn't do anything on failure.
+     */
+    private fun saveSessionToBackend() {
+        lifecycleScope.launchWhenCreated {
+            val token = settingsManager.token.firstOrNull() ?: return@launchWhenCreated
+
+            val requestBody = JSONObject().apply {
+                put(C.JSON_NAME_KEY, session.name)
+                put(C.JSON_DESCRIPTION_KEY, session.description)
+                put(C.JSON_RECORDED_AT_KEY, session.recordedAtIso)
+                put(C.JSON_PACE_MIN_KEY, 420)
+                put(C.JSON_PACE_MAX_KEY, 600)
+            }
+
+            val sessionRequest = AuthorizedJsonObjectRequest(
+                Request.Method.POST, C.API_SESSIONS_URL, requestBody,
+                { response ->
+                    val externalId = response.getString(C.JSON_ID_KEY)
+                    session = Session(
+                        id = session.id,
+                        externalId = externalId,
+                        recordedAt = session.recordedAt
+                    )
+
+                    // Save backend session id for later use
+                    lifecycleScope.launch {
+                        sessionDao.update(session)
+                    }
+                },
+                {},
+                token
+            )
+            restHandler.addRequest(sessionRequest)
+        }
+    }
+
+    /**
+     * Try to save the location to database and the backend server.
+     *
+     * @param location Location to save.
+     * @param type Type of the location. One of the [C.LOC_TYPE_ID], [C.WP_TYPE_ID], [C.CP_TYPE_ID].
+     */
+    @SuppressLint("NewApi")
+    fun saveLocation(location: Location, type: String) {
+        lifecycleScope.launch {
+            val recordedAtMillis = System.currentTimeMillis()
+            val recordedAt = UIUtils.timeMillisToIsoOffset(System.currentTimeMillis())
+
+            // Don't save waypoints to database.
+            if (type != C.WP_TYPE_ID) {
+                val locationPoint = LocationPoint(
+                    sessionId = session.id,
+                    latitude = location.latitude,
+                    longitude = location.longitude,
+                    recordedAt = recordedAtMillis,
+                    type = type
+                )
+
+                saveLocationToDb(locationPoint)
+            }
+
+            val locationJson = JSONObject().apply {
+                put(C.JSON_RECORDED_AT_KEY, recordedAt)
+                put(C.JSON_LATITUDE_KEY, location.latitude)
+                put(C.JSON_LONGITUDE_KEY, location.longitude)
+                put(C.JSON_GPS_SESSION_ID, session.externalId)
+                put(C.JSON_GPS_LOCATION_TYPE_ID, type)
+
+                // Only save altitude and accuracy in case of regular location point
+                if (type == C.LOC_TYPE_ID) {
+                    put(C.JSON_ALTITUDE_KEY, location.altitude)
+                    put(C.JSON_ACCURACY_KEY, location.accuracy)
+
+                    val verticalAcc = when (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        true -> location.verticalAccuracyMeters
+                        false -> location.accuracy
+                    }
+                    put(C.JSON_VERTICAL_ACCURACY, verticalAcc)
+                }
+            }
+
+            saveLocationToBackend(locationJson)
+        }
+    }
+
+    /**
+     * Save the given location to the db.
+     *
+     * @param location The location to save to the db.
+     */
+    private suspend fun saveLocationToDb(location: LocationPoint) {
+        locationPointDao.insert(location)
+    }
+
+    /**
+     * Save the given location to the backend server.
+     *
+     * @param location The location to send to the backend.
+     */
+    private suspend fun saveLocationToBackend(location: JSONObject) {
+        val token = settingsManager.token.firstOrNull() ?: return
+
+        val locationRequest = AuthorizedJsonObjectRequest(
+            Request.Method.POST, C.API_LOCATIONS_URL, location,
+            {},
+            {
+                // TODO: Do something when saving fails
+            },
+            token
+        )
+        restHandler.addRequest(locationRequest)
     }
 
     /**
