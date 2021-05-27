@@ -22,7 +22,6 @@ class SettingsManager @Inject constructor(@ApplicationContext context: Context) 
         const val DATASTORE_NAME = "gps_sport_map_settings_datastore"
 
         private val TOKEN_KEY = stringPreferencesKey("token")
-        private val SESSION_ID_KEY = stringPreferencesKey("session_id_key")
         private val LOGGED_IN_USER_ID_KEY = longPreferencesKey("logged_in_user_id")
         private val LOCATION_UPDATE_INTERVAL_LEY = longPreferencesKey("location_update_interval")
         private val LOCATION_UPDATE_FASTEST_INTERVAL_LEY =
@@ -53,40 +52,6 @@ class SettingsManager @Inject constructor(@ApplicationContext context: Context) 
     suspend fun saveToken(token: String) {
         datastore.edit { preferences ->
             preferences[TOKEN_KEY] = token
-        }
-    }
-
-    /**
-     * Get the ongoing session backend id value from preferences.
-     * If no id is present then returns a Flow of null.
-     */
-    val sessionId: Flow<String?> = datastore.data
-        .catch { exception ->
-            if (exception is IOException) {
-                emit(emptyPreferences())
-            } else {
-                throw exception
-            }
-        }
-        .map { preferences ->
-            preferences[SESSION_ID_KEY]
-        }
-
-    /**
-     * Save the new given session id to the preferences.
-     */
-    suspend fun saveSessionId(id: String) {
-        datastore.edit { preferences ->
-            preferences[SESSION_ID_KEY] = id
-        }
-    }
-
-    /**
-     * Remove the saved session id from preferences.
-     */
-    suspend fun removeSessionId() {
-        datastore.edit { preferences ->
-            preferences.remove(SESSION_ID_KEY)
         }
     }
 

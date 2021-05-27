@@ -28,6 +28,9 @@ class AppModule {
     fun provideSessionDao(db: AppDatabase) = db.sessionDao()
 
     @Provides
+    fun provideLocationPointDao(db: AppDatabase) = db.locationPointDao()
+
+    @Provides
     @Singleton
     fun providesRestHandler(app: Application) = RestHandler(app)
 }

@@ -12,7 +12,10 @@ import java.time.format.DateTimeFormatter
 data class Session(
     @PrimaryKey(autoGenerate = true)
     @ColumnInfo(name = "_id")
-    val id: Long = 0,
+    val id: Long = 0L,
+
+    @ColumnInfo(name = "external_id")
+    val externalId: String? = null,
 
     val name: String = DEFAULT_NAME,
     val description: String = DEFAULT_DESCRIPTION,
