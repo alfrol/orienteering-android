@@ -21,6 +21,7 @@ import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
+import androidx.navigation.fragment.navArgs
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.LocationSettingsRequest
 import com.google.android.gms.location.LocationSettingsResponse
@@ -74,6 +75,7 @@ class SessionFragment : Fragment(R.layout.fragment_session),
     private val binding get() = _binding!!
 
     private val sessionViewModel: SessionViewModel by activityViewModels()
+    private val args: SessionFragmentArgs by navArgs()
 
     private val openSettings: Animation by lazy {
         AnimationUtils.loadAnimation(requireContext(), R.anim.settings_button_open)
@@ -136,6 +138,9 @@ class SessionFragment : Fragment(R.layout.fragment_session),
             // Instantiate the session data as bottom sheet
             bottomSheetBehavior = BottomSheetBehavior.from(sessionData)
             bottomSheetBehavior.state = BottomSheetBehavior.STATE_COLLAPSED
+            if (args.isPreview) {
+                bottomSheetBehavior.isDraggable = false
+            }
         }
 
         startObserving()
@@ -182,30 +187,19 @@ class SessionFragment : Fragment(R.layout.fragment_session),
         }
     }
 
-    @SuppressLint("MissingPermission")
     override fun onMapReady(googleMap: GoogleMap) {
         map = googleMap
-        map?.setOnMapClickListener(this)
-        map?.setOnMapLongClickListener(this)
-        map?.setOnCameraMoveStartedListener(this)
 
-        if (UIUtils.hasLocationPermission(requireContext())) {
-            map?.isMyLocationEnabled = true
-            with(map?.uiSettings) {
-                this?.isMyLocationButtonEnabled = false
-                this?.isCompassEnabled = false
-            }
-
-            // When the map is ready try to focus on current device location
-            onClickCenterView.onClick(null)
-        } else {
-            checkLocationSettings()
+        with(map?.uiSettings) {
+            this?.isMyLocationButtonEnabled = false
+            this?.isCompassEnabled = false
         }
 
-        // Add all path points, checkpoints and a waypoint if the map was recreated
-        addAllPathPoints()
-        addAllCheckpoints()
-        addWaypoint()
+        if (args.isPreview) {
+            setupMapForPreview()
+        } else {
+            setupMapForSession()
+        }
     }
 
     override fun onMapClick(p0: LatLng) {
@@ -267,6 +261,59 @@ class SessionFragment : Fragment(R.layout.fragment_session),
         super.onDestroyView()
         binding.mapView.onDestroy()
         _binding = null
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun setupMapForSession() {
+        map?.setOnMapClickListener(this)
+        map?.setOnMapLongClickListener(this)
+        map?.setOnCameraMoveStartedListener(this)
+
+        if (UIUtils.hasLocationPermission(requireContext())) {
+            map?.isMyLocationEnabled = true
+
+            // When the map is ready try to focus on current device location
+            onClickCenterView.onClick(null)
+        } else {
+            checkLocationSettings()
+        }
+
+        // Add all path points, checkpoints and a waypoint if the map was recreated
+        addAllPathPoints()
+        addAllCheckpoints()
+        addWaypoint()
+    }
+
+    private fun setupMapForPreview() {
+        with(binding) {
+            fabSessionStart.visibility = View.GONE
+            fabSettings.visibility = View.GONE
+        }
+
+        sessionViewModel.getSessionWithLocationPoints(args.previewedSessionId)
+            .observe(viewLifecycleOwner, {
+                it?.let { sessionWithLocationPoints ->
+                    val session = sessionWithLocationPoints.session
+                    val locationPoints = sessionWithLocationPoints.locationPoints
+
+                    Log.d("SessionFragment", "setupMapForPreview: $locationPoints")
+
+                    updateDistance(session.distance, SESSION_DATA_TOTAL)
+                    updateDuration(session.duration, SESSION_DATA_TOTAL)
+                    updatePace(session.pace, SESSION_DATA_TOTAL)
+
+                    locationPoints.forEach { point ->
+                        val latLng = LatLng(point.latitude, point.longitude)
+
+                        when (point.type) {
+                            C.LOC_TYPE_ID -> pathPoints.add(latLng)
+                            C.CP_TYPE_ID -> checkpoints.add(latLng)
+                        }
+                    }
+                    addAllPathPoints()
+                    addAllCheckpoints()
+                }
+            })
     }
 
     /**

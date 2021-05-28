@@ -10,6 +10,6 @@ data class SessionWithLocationPoints(
     @Embedded
     val session: Session,
 
-    @Relation(parentColumn = "_id", entityColumn = "_id")
+    @Relation(parentColumn = "_id", entityColumn = "session_id")
     val locationPoints: List<LocationPoint>
 )

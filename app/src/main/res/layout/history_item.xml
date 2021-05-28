@@ -4,7 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="200dp"
     android:layout_margin="@dimen/small_padding"
-    android:background="@color/white"
+    android:background="@drawable/history_item_background"
     android:padding="@dimen/small_padding">
 
     <TextView
@@ -38,11 +38,11 @@
         android:text="TextView"
         android:textColor="@color/black"
         android:textSize="14sp"
+        app:drawableStartCompat="@drawable/ic_total_distance"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@+id/tv_total_duration"
         app:layout_constraintHorizontal_bias="0.5"
-        app:layout_constraintStart_toStartOf="parent"
-        app:drawableStartCompat="@drawable/ic_total_distance" />
+        app:layout_constraintStart_toStartOf="parent" />
 
     <TextView
         android:id="@+id/tv_total_duration"
@@ -53,11 +53,11 @@
         android:text="TextView"
         android:textColor="@color/black"
         android:textSize="14sp"
+        app:drawableStartCompat="@drawable/ic_duration"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@+id/tv_average_pace"
         app:layout_constraintHorizontal_bias="0.5"
-        app:layout_constraintStart_toEndOf="@+id/tv_total_distance"
-        app:drawableStartCompat="@drawable/ic_duration" />
+        app:layout_constraintStart_toEndOf="@+id/tv_total_distance" />
 
     <TextView
         android:id="@+id/tv_average_pace"
@@ -68,11 +68,11 @@
         android:text="TextView"
         android:textColor="@color/black"
         android:textSize="14sp"
+        app:drawableLeftCompat="@drawable/ic_pace"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.5"
-        app:layout_constraintStart_toEndOf="@+id/tv_total_duration"
-        app:drawableLeftCompat="@drawable/ic_pace" />
+        app:layout_constraintStart_toEndOf="@+id/tv_total_duration" />
 
     <TextView
         android:id="@+id/tv_description"

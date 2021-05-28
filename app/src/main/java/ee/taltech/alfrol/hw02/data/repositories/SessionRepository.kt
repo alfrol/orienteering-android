@@ -21,4 +21,6 @@ class SessionRepository @Inject constructor(private val sessionDao: SessionDao) 
     fun findAllSortedByPace() = sessionDao.findAllSortedByPace()
 
     fun findByExternalId(externalId: String) = sessionDao.findByExternalId(externalId)
+
+    fun findByIdWithLocationPoints(id: Long) = sessionDao.findByIdWithLocationPoints(id)
 }

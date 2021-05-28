@@ -55,10 +55,23 @@
         android:id="@+id/sessionFragment"
         android:name="ee.taltech.alfrol.hw02.ui.fragments.SessionFragment"
         android:label="fragment_session"
-        tools:layout="@layout/fragment_session" />
+        tools:layout="@layout/fragment_session" >
+        <argument
+            android:name="isPreview"
+            app:argType="boolean"
+            android:defaultValue="false" />
+        <argument
+            android:name="previewedSessionId"
+            app:argType="long"
+            android:defaultValue="0L" />
+    </fragment>
     <fragment
         android:id="@+id/historyFragment"
         android:name="ee.taltech.alfrol.hw02.ui.fragments.HistoryFragment"
         android:label="fragment_history"
-        tools:layout="@layout/fragment_history" />
+        tools:layout="@layout/fragment_history" >
+        <action
+            android:id="@+id/action_preview_session"
+            app:destination="@id/sessionFragment" />
+    </fragment>
 </navigation>

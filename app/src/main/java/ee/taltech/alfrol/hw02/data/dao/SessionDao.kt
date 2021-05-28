@@ -32,4 +32,8 @@ interface SessionDao {
     @Transaction
     @Query("SELECT * FROM Session WHERE external_id = :id")
     fun findByExternalId(id: String): Flow<List<SessionWithLocationPoints>>
+
+    @Transaction
+    @Query("SELECT * FROM Session WHERE _id = :id")
+    fun findByIdWithLocationPoints(id: Long): Flow<SessionWithLocationPoints>
 }

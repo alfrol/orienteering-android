@@ -4,9 +4,10 @@ import android.content.Intent
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.MutableLiveData
 import ee.taltech.alfrol.hw02.C
-import java.util.concurrent.Executors
-import java.util.concurrent.ScheduledExecutorService
-import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 class StopwatchService : LifecycleService() {
 
@@ -16,7 +17,7 @@ class StopwatchService : LifecycleService() {
         val waypoint = MutableLiveData<Long>()
     }
 
-    private lateinit var executorService: ScheduledExecutorService
+    //private lateinit var executorService: ScheduledExecutorService
 
     private var isTotalRunning = false
     private var isCheckpointRunning = false
@@ -40,9 +41,9 @@ class StopwatchService : LifecycleService() {
 
     override fun onDestroy() {
         super.onDestroy()
-        if (this::executorService.isInitialized) {
-            executorService.shutdown()
-        }
+        //if (this::executorService.isInitialized) {
+        //    executorService.shutdown()
+        //}
     }
 
     private fun postInitialValues() {
@@ -98,7 +99,7 @@ class StopwatchService : LifecycleService() {
                 checkpointDuration = 0L
                 waypointDuration = 0L
 
-                executorService.shutdown()
+                //executorService.shutdown()
                 postInitialValues()
                 stopSelf()
             }
@@ -117,20 +118,34 @@ class StopwatchService : LifecycleService() {
      * Start the executor service with the interval of 1 millisecond.
      */
     private fun run() {
-        executorService = Executors.newScheduledThreadPool(1)
-        executorService.scheduleAtFixedRate(
-            {
-                if (isTotalRunning) {
-                    total.postValue(++totalDuration)
-                }
+        CoroutineScope(Dispatchers.Main).launch {
+            while (isTotalRunning) {
+                total.postValue(++totalDuration)
+
                 if (isCheckpointRunning) {
                     checkpoint.postValue(++checkpointDuration)
                 }
                 if (isWaypointRunning) {
                     waypoint.postValue(++waypointDuration)
                 }
-            },
-            0, 1, TimeUnit.MILLISECONDS
-        )
+
+                delay(1)
+            }
+        }
+        //executorService = Executors.newScheduledThreadPool(1)
+        //executorService.scheduleAtFixedRate(
+        //    {
+        //        if (isTotalRunning) {
+        //            total.postValue(++totalDuration)
+        //        }
+        //        if (isCheckpointRunning) {
+        //            checkpoint.postValue(++checkpointDuration)
+        //        }
+        //        if (isWaypointRunning) {
+        //            waypoint.postValue(++waypointDuration)
+        //        }
+        //    },
+        //    0, 1, TimeUnit.MILLISECONDS
+        //)
     }
 }

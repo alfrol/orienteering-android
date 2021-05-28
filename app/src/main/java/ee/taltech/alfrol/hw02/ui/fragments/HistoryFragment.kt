@@ -6,19 +6,20 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import dagger.hilt.android.AndroidEntryPoint
 import ee.taltech.alfrol.hw02.adapters.SessionAdapter
 import ee.taltech.alfrol.hw02.databinding.FragmentHistoryBinding
-import ee.taltech.alfrol.hw02.ui.viewmodels.HistoryViewModel
+import ee.taltech.alfrol.hw02.ui.viewmodels.SessionViewModel
 
 @AndroidEntryPoint
-class HistoryFragment : Fragment() {
+class HistoryFragment : Fragment(), SessionAdapter.OnChildClickListener {
 
     private var _binding: FragmentHistoryBinding? = null
     private val binding get() = _binding!!
 
-    private val historyViewModel: HistoryViewModel by viewModels()
+    private val sessionViewModel: SessionViewModel by viewModels()
 
     private lateinit var sessionAdapter: SessionAdapter
 
@@ -34,13 +35,21 @@ class HistoryFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         binding.rvSessions.apply {
-            sessionAdapter = SessionAdapter(requireContext())
+            sessionAdapter = SessionAdapter(requireContext(), this@HistoryFragment)
             adapter = sessionAdapter
             layoutManager = LinearLayoutManager(requireContext())
         }
 
-        historyViewModel.sessionsSortedByRecordedAt.observe(viewLifecycleOwner, {
+        sessionViewModel.sessionsSortedByRecordedAt.observe(viewLifecycleOwner, {
             sessionAdapter.submitList(it)
         })
+    }
+
+    override fun onClick(sessionId: Long) {
+        val previewSessionAction = HistoryFragmentDirections.actionPreviewSession(
+            isPreview = true,
+            previewedSessionId = sessionId
+        )
+        findNavController().navigate(previewSessionAction)
     }
 }
