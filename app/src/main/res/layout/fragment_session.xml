@@ -145,6 +145,56 @@
         android:src="@drawable/ic_compass"
         android:visibility="invisible" />
 
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fab_add_checkpoint"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|end"
+        android:layout_marginEnd="24dp"
+        android:clickable="true"
+        android:focusable="true"
+        android:src="@drawable/ic_checkpoint"
+        android:tint="@color/white"
+        app:borderWidth="0dp"
+        app:layout_anchor="@id/divider6"
+        app:layout_anchorGravity="end"
+        app:rippleColor="@color/grey_transparent"
+        app:tint="@color/white" />
+
+    <View
+        android:id="@+id/divider6"
+        android:layout_width="16dp"
+        android:layout_height="8dp"
+        android:layout_gravity="top|end"
+        android:layout_marginEnd="24dp"
+        app:layout_anchor="@id/fab_add_waypoint"
+        app:layout_anchorGravity="top|end" />
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fab_add_waypoint"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|end"
+        android:layout_marginEnd="24dp"
+        android:clickable="true"
+        android:focusable="true"
+        android:src="@drawable/ic_waypoint"
+        android:tint="@color/white"
+        app:borderWidth="0dp"
+        app:layout_anchor="@id/divider7"
+        app:layout_anchorGravity="end"
+        app:rippleColor="@color/grey_transparent"
+        app:tint="@color/white" />
+
+    <View
+        android:id="@+id/divider7"
+        android:layout_width="16dp"
+        android:layout_height="8dp"
+        android:layout_gravity="top|end"
+        android:layout_marginEnd="24dp"
+        app:layout_anchor="@id/session_data"
+        app:layout_anchorGravity="top|end" />
+
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/session_data"
         android:layout_width="match_parent"

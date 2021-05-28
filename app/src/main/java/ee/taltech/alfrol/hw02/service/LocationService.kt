@@ -9,7 +9,6 @@ import android.location.LocationManager
 import android.net.ConnectivityManager
 import android.os.Build
 import android.os.Looper
-import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.lifecycle.*
 import androidx.lifecycle.Observer
@@ -65,26 +64,6 @@ class LocationService : LifecycleService() {
         // In meters
         private const val LOCATION_DISTANCE_THRESHOLD = 50.0f
         private const val LOCATION_ACCURACY_THRESHOLD = 15.0f
-
-        /**
-         * Add a new checkpoint to the checkpoints list.
-         *
-         * @param location Checkpoint location.
-         */
-        fun addNewCheckpoint(location: LatLng) {
-            checkpoints.value = checkpoints.value?.apply {
-                add(location)
-            } ?: mutableListOf(location)
-        }
-
-        /**
-         * Set a new waypoint.
-         *
-         * @param location Waypoint location.
-         */
-        fun addNewWaypoint(location: LatLng) {
-            waypoint.value = location
-        }
     }
 
     @Inject
@@ -122,6 +101,8 @@ class LocationService : LifecycleService() {
                 C.ACTION_START_SERVICE -> startService()
                 C.ACTION_STOP_SERVICE -> stopService()
                 C.ACTION_GET_CURRENT_LOCATION -> getCurrentLocation()
+                C.ACTION_ADD_CHECKPOINT -> addNewCheckpoint()
+                C.ACTION_ADD_WAYPOINT -> addNewWaypoint()
             }
         }
         return super.onStartCommand(intent, flags, startId)
@@ -306,7 +287,7 @@ class LocationService : LifecycleService() {
                 }
             }
 
-            addPoint(location)
+            addPathPoint(location)
             saveLocation(location, C.LOC_TYPE_ID)
         }
     }
@@ -338,7 +319,7 @@ class LocationService : LifecycleService() {
     /**
      * Add a new location point to the path point list.
      */
-    private fun addPoint(location: Location) {
+    private fun addPathPoint(location: Location) {
         val latLng = LatLng(location.latitude, location.longitude)
         pathPoints.value?.apply {
             add(latLng)
@@ -352,6 +333,56 @@ class LocationService : LifecycleService() {
 
             updateWaypointDistance()
             updateWaypointPace()
+        }
+    }
+
+    /**
+     * Add a new checkpoint to the checkpoints list.
+     */
+    private fun addNewCheckpoint() {
+        if (isRunning.value != true) {
+            return
+        }
+
+        pathPoints.value?.let { points ->
+            if (points.isNotEmpty()) {
+                val last = points.last()
+
+                checkpoints.value = checkpoints.value?.apply {
+                    add(last)
+                } ?: mutableListOf(last)
+
+                val location = Location("").apply {
+                    latitude = last.latitude
+                    longitude = last.longitude
+                }
+                saveLocation(location, C.CP_TYPE_ID)
+            }
+        }
+    }
+
+    /**
+     * Set a new waypoint.
+     *
+     * @param location Waypoint location.
+     */
+    private fun addNewWaypoint() {
+        if (isRunning.value != true) {
+            return
+        }
+
+        pathPoints.value?.let { points ->
+            if (points.isNotEmpty()) {
+                val last = points.last()
+
+                waypoint.value = last
+
+                val location = Location("").apply {
+                    latitude = last.latitude
+                    longitude = last.longitude
+                }
+                saveLocation(location, C.WP_TYPE_ID)
+            }
         }
     }
 

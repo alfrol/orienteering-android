@@ -38,6 +38,8 @@ object C {
     const val ACTION_START_SERVICE = "START_SERVICE"
     const val ACTION_STOP_SERVICE = "STOP_SERVICE"
     const val ACTION_GET_CURRENT_LOCATION = "GET_CURRENT_LOCATION"
+    const val ACTION_ADD_CHECKPOINT = "ADD_CHECKPOINT"
+    const val ACTION_ADD_WAYPOINT = "ADD_WAYPOINT"
 
     const val STOPWATCH_TYPE_KEY = "stopwatch_type"
 

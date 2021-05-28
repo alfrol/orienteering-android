@@ -3,18 +3,14 @@ package ee.taltech.alfrol.hw02.ui.fragments
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Intent
-import android.graphics.Point
 import android.os.Bundle
-import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.Animation
 import android.view.animation.AnimationUtils
 import android.view.animation.RotateAnimation
-import android.widget.PopupWindow
 import androidx.appcompat.app.AlertDialog
-import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
@@ -37,7 +33,6 @@ import ee.taltech.alfrol.hw02.C
 import ee.taltech.alfrol.hw02.R
 import ee.taltech.alfrol.hw02.data.SettingsManager
 import ee.taltech.alfrol.hw02.databinding.FragmentSessionBinding
-import ee.taltech.alfrol.hw02.databinding.SessionPopupMenuBinding
 import ee.taltech.alfrol.hw02.service.LocationService
 import ee.taltech.alfrol.hw02.service.StopwatchService
 import ee.taltech.alfrol.hw02.ui.states.CompassState
@@ -55,7 +50,6 @@ import javax.inject.Inject
 class SessionFragment : Fragment(R.layout.fragment_session),
     OnMapReadyCallback,
     GoogleMap.OnMapClickListener,
-    GoogleMap.OnMapLongClickListener,
     GoogleMap.OnCameraMoveStartedListener,
     EasyPermissions.PermissionCallbacks,
     CompassListener.OnCompassUpdateCallback {
@@ -135,6 +129,8 @@ class SessionFragment : Fragment(R.layout.fragment_session),
             fabCenterMapView.setOnClickListener(onClickCenterView)
             fabResetMapView.setOnClickListener(onClickResetMapView)
             fabToggleCompass.setOnClickListener(onClickToggleCompass)
+            fabAddCheckpoint.setOnClickListener(onClickAddCheckpoint)
+            fabAddWaypoint.setOnClickListener(onClickAddWaypoint)
 
             // Instantiate the session data as bottom sheet
             bottomSheetBehavior = BottomSheetBehavior.from(sessionData)
@@ -207,10 +203,6 @@ class SessionFragment : Fragment(R.layout.fragment_session),
         toggleSessionData()
     }
 
-    override fun onMapLongClick(location: LatLng) {
-        showPopup(location)
-    }
-
     override fun onCameraMoveStarted(reason: Int) {
         if (reason == GoogleMap.OnCameraMoveStartedListener.REASON_GESTURE) {
             isFollowingDevice = false
@@ -267,7 +259,6 @@ class SessionFragment : Fragment(R.layout.fragment_session),
     @SuppressLint("MissingPermission")
     private fun setupMapForSession() {
         map?.setOnMapClickListener(this)
-        map?.setOnMapLongClickListener(this)
         map?.setOnCameraMoveStartedListener(this)
 
         if (UIUtils.hasLocationPermission(requireContext())) {
@@ -579,6 +570,26 @@ class SessionFragment : Fragment(R.layout.fragment_session),
     }
 
     /**
+     * Listener for checkpoint adding button.
+     */
+    private val onClickAddCheckpoint = View.OnClickListener {
+        if (isRunning) {
+            startLocationService(C.ACTION_ADD_CHECKPOINT)
+            startStopwatchService(C.ACTION_START_SERVICE, C.STOPWATCH_CHECKPOINT)
+        }
+    }
+
+    /**
+     * Listener for waypoint adding button.
+     */
+    private val onClickAddWaypoint = View.OnClickListener {
+        if (isRunning) {
+            startLocationService(C.ACTION_ADD_WAYPOINT)
+            startStopwatchService(C.ACTION_START_SERVICE, C.STOPWATCH_WAYPOINT)
+        }
+    }
+
+    /**
      * Add the last point in points list to the map.
      */
     private fun addLastPoint() {
@@ -762,40 +773,6 @@ class SessionFragment : Fragment(R.layout.fragment_session),
 
         task.addOnFailureListener {
             // TODO: Handle the case where settings are not enabled
-        }
-    }
-
-    /**
-     * Show popup for adding checkpoint or waypoint on the map at the specified location.
-     *
-     * @param location Where to add a new checkpoint.
-     */
-    private fun showPopup(location: LatLng) {
-        val popupViewBinding = SessionPopupMenuBinding.inflate(layoutInflater)
-        val popupView = popupViewBinding.root
-
-        val width = ConstraintLayout.LayoutParams.WRAP_CONTENT
-        val height = ConstraintLayout.LayoutParams.WRAP_CONTENT
-
-        val popupWindow = PopupWindow(popupView, width, height, true)
-        val position = map?.projection?.toScreenLocation(location) ?: Point()
-
-        popupWindow.showAtLocation(
-            binding.imageViewCompass,
-            Gravity.NO_GRAVITY,
-            position.x,
-            position.y
-        )
-
-        popupViewBinding.buttonAddCheckpoint.setOnClickListener {
-            LocationService.addNewCheckpoint(location)
-            startStopwatchService(C.ACTION_START_SERVICE, C.STOPWATCH_CHECKPOINT)
-            popupWindow.dismiss()
-        }
-        popupViewBinding.buttonAddWaypoint.setOnClickListener {
-            LocationService.addNewWaypoint(location)
-            startStopwatchService(C.ACTION_START_SERVICE, C.STOPWATCH_WAYPOINT)
-            popupWindow.dismiss()
         }
     }
 }
