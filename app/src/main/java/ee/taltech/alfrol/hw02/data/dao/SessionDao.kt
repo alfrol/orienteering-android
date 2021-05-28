@@ -8,13 +8,6 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface SessionDao {
 
-    @Query("SELECT * FROM Session ORDER BY recorded_at DESC")
-    fun findAll(): Flow<List<Session>>
-
-    @Transaction
-    @Query("SELECT * FROM Session WHERE external_id = :id")
-    fun findByExternalId(id: String): Flow<List<SessionWithLocationPoints>>
-
     @Insert
     suspend fun insert(session: Session): Long
 
@@ -23,4 +16,20 @@ interface SessionDao {
 
     @Delete
     suspend fun delete(session: Session)
+
+    @Query("SELECT * FROM Session ORDER BY recorded_at DESC")
+    fun findAllSortedByRecordedAt(): Flow<List<Session>>
+
+    @Query("SELECT * FROM Session ORDER BY distance DESC")
+    fun findAllSortedByDistance(): Flow<List<Session>>
+
+    @Query("SELECT * FROM Session ORDER BY duration DESC")
+    fun findAllSortedByDuration(): Flow<List<Session>>
+
+    @Query("SELECT * FROM Session ORDER BY pace DESC")
+    fun findAllSortedByPace(): Flow<List<Session>>
+
+    @Transaction
+    @Query("SELECT * FROM Session WHERE external_id = :id")
+    fun findByExternalId(id: String): Flow<List<SessionWithLocationPoints>>
 }

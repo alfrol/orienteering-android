@@ -25,10 +25,10 @@ import ee.taltech.alfrol.hw02.R
 import ee.taltech.alfrol.hw02.api.AuthorizedJsonObjectRequest
 import ee.taltech.alfrol.hw02.api.RestHandler
 import ee.taltech.alfrol.hw02.data.SettingsManager
-import ee.taltech.alfrol.hw02.data.dao.LocationPointDao
-import ee.taltech.alfrol.hw02.data.dao.SessionDao
 import ee.taltech.alfrol.hw02.data.model.LocationPoint
 import ee.taltech.alfrol.hw02.data.model.Session
+import ee.taltech.alfrol.hw02.data.repositories.LocationPointRepository
+import ee.taltech.alfrol.hw02.data.repositories.SessionRepository
 import ee.taltech.alfrol.hw02.ui.fragments.SessionFragment
 import ee.taltech.alfrol.hw02.ui.utils.UIUtils
 import kotlinx.coroutines.flow.first
@@ -90,10 +90,10 @@ class LocationService : LifecycleService() {
     lateinit var settingsManager: SettingsManager
 
     @Inject
-    lateinit var sessionDao: SessionDao
+    lateinit var sessionRepository: SessionRepository
 
     @Inject
-    lateinit var locationPointDao: LocationPointDao
+    lateinit var locationPointRepository: LocationPointRepository
 
     @Inject
     lateinit var restHandler: RestHandler
@@ -149,7 +149,7 @@ class LocationService : LifecycleService() {
     private fun startService() {
         runBlocking {
             val rawSession = Session()
-            val id = sessionDao.insert(rawSession)
+            val id = sessionRepository.insertSession(rawSession)
 
             // All other values remain default
             session = Session(id = id, recordedAt = rawSession.recordedAt)
@@ -382,7 +382,7 @@ class LocationService : LifecycleService() {
 
                     // Save backend session id for later use
                     lifecycleScope.launch {
-                        sessionDao.update(session)
+                        sessionRepository.updateSession(session)
                     }
                 },
                 {},
@@ -406,7 +406,7 @@ class LocationService : LifecycleService() {
         )
 
         lifecycleScope.launchWhenCreated {
-            sessionDao.update(updatedSession)
+            sessionRepository.updateSession(updatedSession)
         }
     }
 
@@ -462,7 +462,7 @@ class LocationService : LifecycleService() {
      */
     private fun saveLocationToDb(location: LocationPoint) {
         lifecycleScope.launchWhenCreated {
-            locationPointDao.insert(location)
+            locationPointRepository.insertLocationPoint(location)
         }
     }
 

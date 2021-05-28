@@ -7,9 +7,6 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface UserDao {
 
-    @Query("SELECT * FROM User WHERE email = :email")
-    fun findByEmail(email: String): Flow<User>
-
     @Insert
     suspend fun insert(user: User): Long
 
@@ -18,4 +15,7 @@ interface UserDao {
 
     @Delete
     suspend fun delete(user: User)
+
+    @Query("SELECT * FROM User WHERE email = :email")
+    fun findByEmail(email: String): Flow<User>
 }

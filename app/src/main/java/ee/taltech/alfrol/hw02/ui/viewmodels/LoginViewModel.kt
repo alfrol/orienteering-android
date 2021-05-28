@@ -12,7 +12,7 @@ import ee.taltech.alfrol.hw02.C
 import ee.taltech.alfrol.hw02.R
 import ee.taltech.alfrol.hw02.api.RestHandler
 import ee.taltech.alfrol.hw02.data.SettingsManager
-import ee.taltech.alfrol.hw02.data.dao.UserDao
+import ee.taltech.alfrol.hw02.data.repositories.UserRepository
 import ee.taltech.alfrol.hw02.ui.states.AuthenticationResult
 import ee.taltech.alfrol.hw02.ui.states.LoginFormState
 import kotlinx.coroutines.flow.first
@@ -22,7 +22,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class LoginViewModel @Inject constructor(
-    private val userDao: UserDao,
+    private val userRepository: UserRepository,
     private val restHandler: RestHandler,
     private val settingsManager: SettingsManager
 ) : ViewModel() {
@@ -50,7 +50,7 @@ class LoginViewModel @Inject constructor(
                     // TODO: This assumes the user is already in the database
                     //  but if someone tries to log in from other phone, then this
                     //  will not work since user will not be in the database
-                    val user = userDao.findByEmail(email).first()
+                    val user = userRepository.findByEmail(email).first()
                     settingsManager.saveToken(token)
                     settingsManager.saveLoggedInUser(user.id)
 

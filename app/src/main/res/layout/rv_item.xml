@@ -1,11 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
-    android:background="@color/white"
-    android:layout_margin="@dimen/small_padding"
     android:layout_width="match_parent"
     android:layout_height="200dp"
+    android:layout_margin="@dimen/small_padding"
+    android:background="@color/white"
     android:padding="@dimen/small_padding">
 
     <TextView
@@ -35,7 +34,6 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginBottom="16dp"
-        android:drawableLeft="@drawable/ic_total_distance"
         android:fontFamily="@font/roboto"
         android:text="TextView"
         android:textColor="@color/black"
@@ -43,14 +41,14 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@+id/tv_total_duration"
         app:layout_constraintHorizontal_bias="0.5"
-        app:layout_constraintStart_toStartOf="parent" />
+        app:layout_constraintStart_toStartOf="parent"
+        app:drawableStartCompat="@drawable/ic_total_distance" />
 
     <TextView
         android:id="@+id/tv_total_duration"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginBottom="16dp"
-        android:drawableLeft="@drawable/ic_duration"
         android:fontFamily="@font/roboto"
         android:text="TextView"
         android:textColor="@color/black"
@@ -58,14 +56,14 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@+id/tv_average_pace"
         app:layout_constraintHorizontal_bias="0.5"
-        app:layout_constraintStart_toEndOf="@+id/tv_total_distance" />
+        app:layout_constraintStart_toEndOf="@+id/tv_total_distance"
+        app:drawableStartCompat="@drawable/ic_duration" />
 
     <TextView
         android:id="@+id/tv_average_pace"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginBottom="16dp"
-        android:drawableLeft="@drawable/ic_pace"
         android:fontFamily="@font/roboto"
         android:text="TextView"
         android:textColor="@color/black"
@@ -73,19 +71,21 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.5"
-        app:layout_constraintStart_toEndOf="@+id/tv_total_duration" />
+        app:layout_constraintStart_toEndOf="@+id/tv_total_duration"
+        app:drawableLeftCompat="@drawable/ic_pace" />
 
     <TextView
         android:id="@+id/tv_description"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="TextView"
-        android:fontFamily="@font/roboto_light"
-        android:textSize="18sp"
-        android:textColor="@color/black"
         android:ellipsize="end"
+        android:fontFamily="@font/roboto_light"
+        android:text="TextView"
+        android:textColor="@color/black"
+        android:textSize="18sp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>

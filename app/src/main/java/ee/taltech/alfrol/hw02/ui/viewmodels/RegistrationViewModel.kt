@@ -13,8 +13,8 @@ import ee.taltech.alfrol.hw02.C
 import ee.taltech.alfrol.hw02.R
 import ee.taltech.alfrol.hw02.api.RestHandler
 import ee.taltech.alfrol.hw02.data.SettingsManager
-import ee.taltech.alfrol.hw02.data.dao.UserDao
 import ee.taltech.alfrol.hw02.data.model.User
+import ee.taltech.alfrol.hw02.data.repositories.UserRepository
 import ee.taltech.alfrol.hw02.ui.states.AuthenticationResult
 import ee.taltech.alfrol.hw02.ui.states.RegistrationFormState
 import kotlinx.coroutines.launch
@@ -24,7 +24,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class RegistrationViewModel @Inject constructor(
-    private val userDao: UserDao,
+    private val userRepository: UserRepository,
     private val restHandler: RestHandler,
     private val settingsManager: SettingsManager
 ) : ViewModel() {
@@ -64,7 +64,7 @@ class RegistrationViewModel @Inject constructor(
                     // Also save user id and API token to the datastore for later use.
                     viewModelScope.launch {
                         val user = User(firstName = firstName, lastName = lastName, email = email)
-                        val userId = userDao.insert(user)
+                        val userId = userRepository.insertUser(user)
 
                         settingsManager.saveToken(token)
                         settingsManager.saveLoggedInUser(userId)
