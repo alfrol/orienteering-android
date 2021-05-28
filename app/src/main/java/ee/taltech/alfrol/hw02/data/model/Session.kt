@@ -28,7 +28,7 @@ data class Session(
     val pace: Float = 0.0f
 ) {
     companion object {
-        private const val DEFAULT_NAME = "Session Description"
+        private const val DEFAULT_NAME = "Session Name"
         private const val DEFAULT_DESCRIPTION = "Session Description"
     }
 

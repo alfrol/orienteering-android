@@ -42,6 +42,10 @@ class HistoryFragment : Fragment(), SessionAdapter.OnChildClickListener {
 
         sessionViewModel.sessionsSortedByRecordedAt.observe(viewLifecycleOwner, {
             sessionAdapter.submitList(it)
+            binding.tvMissingItems.visibility = when (it.isEmpty()) {
+                true -> View.VISIBLE
+                false -> View.GONE
+            }
         })
     }
 
