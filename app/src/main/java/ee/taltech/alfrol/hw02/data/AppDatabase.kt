@@ -17,7 +17,7 @@ import ee.taltech.alfrol.hw02.data.model.User
 abstract class AppDatabase : RoomDatabase() {
 
     companion object {
-        const val DATABASE_VERSION = 4
+        const val DATABASE_VERSION = 5
         const val DATABASE_NAME = "gps_sport_map_db"
     }
 

@@ -1,14 +1,12 @@
 package ee.taltech.alfrol.hw02.ui.viewmodels
 
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.asLiveData
+import androidx.lifecycle.*
 import dagger.hilt.android.lifecycle.HiltViewModel
 import ee.taltech.alfrol.hw02.R
 import ee.taltech.alfrol.hw02.data.model.Session
 import ee.taltech.alfrol.hw02.data.repositories.SessionRepository
 import ee.taltech.alfrol.hw02.ui.states.CompassState
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
@@ -45,6 +43,9 @@ class SessionViewModel @Inject constructor(
 
     fun getSessionWithLocationPoints(id: Long) =
         sessionRepository.findByIdWithLocationPoints(id).asLiveData()
+
+    fun deleteSession(session: Session) =
+        viewModelScope.launch { sessionRepository.deleteSession(session) }
 
     /**
      * Toggle the compass enabled state.

@@ -4,12 +4,15 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import dagger.hilt.android.AndroidEntryPoint
+import ee.taltech.alfrol.hw02.R
 import ee.taltech.alfrol.hw02.adapters.SessionAdapter
+import ee.taltech.alfrol.hw02.data.model.Session
 import ee.taltech.alfrol.hw02.databinding.FragmentHistoryBinding
 import ee.taltech.alfrol.hw02.ui.viewmodels.SessionViewModel
 
@@ -55,5 +58,18 @@ class HistoryFragment : Fragment(), SessionAdapter.OnChildClickListener {
             previewedSessionId = sessionId
         )
         findNavController().navigate(previewSessionAction)
+    }
+
+    override fun onRemove(session: Session) {
+        AlertDialog.Builder(requireContext())
+            .setTitle(R.string.title_remove_session)
+            .setMessage(R.string.text_session_removal_confirmation)
+            .setPositiveButton(android.R.string.ok) { _, _ ->
+                sessionViewModel.deleteSession(session)
+                sessionAdapter.notifyDataSetChanged()
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .create()
+            .show()
     }
 }

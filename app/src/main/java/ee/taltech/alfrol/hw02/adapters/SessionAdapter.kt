@@ -27,6 +27,13 @@ class SessionAdapter(
          * @param sessionId ID of the session that is bound to this child.
          */
         fun onClick(sessionId: Long)
+
+        /**
+         * Executed when a remove button is clicked on the child.
+         *
+         * @param session Session object to remove.
+         */
+        fun onRemove(session: Session)
     }
 
     private val diffCallback = object : DiffUtil.ItemCallback<Session>() {
@@ -74,6 +81,10 @@ class SessionAdapter(
                 tvTotalDistance.text = UIUtils.formatDistance(context, session.distance)
                 tvTotalDuration.text = UIUtils.formatDuration(context, session.duration)
                 tvAveragePace.text = context.getString(R.string.pace, session.pace)
+
+                ibRemoveSessions.setOnClickListener {
+                    onChildClickListener.onRemove(session)
+                }
             }
         }
     }

@@ -8,6 +8,7 @@
     <string name="title_add_waypoint">Add waypoint</string>
     <string name="title_stop_session">Stop session</string>
     <string name="title_no_sessions">No sessions to view</string>
+    <string name="title_remove_session">Remove session</string>
 
     <string name="subtitle_new_session">New Session</string>
     <string name="subtitle_sessions">Sessions</string>
@@ -24,6 +25,7 @@
     <string name="text_pace">Pace</string>
     <string name="text_stopping_confirmation">Are you sure you want to stop the session? You will not be able to start it again.</string>
     <string name="text_session_ended">Session has been ended. You can now view it in the history.</string>
+    <string name="text_session_removal_confirmation">Are you sure you want to remove this session? This action is irreversible.</string>
 
     <string name="prompt_first_name">First name</string>
     <string name="prompt_last_name">Last name</string>

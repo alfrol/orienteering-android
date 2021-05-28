@@ -1,10 +1,17 @@
 package ee.taltech.alfrol.hw02.data.model
 
-import androidx.room.ColumnInfo
-import androidx.room.Entity
-import androidx.room.PrimaryKey
+import androidx.room.*
 
-@Entity(tableName = "location_point")
+@Entity(
+    tableName = "location_point",
+    foreignKeys = [ForeignKey(
+        onDelete = ForeignKey.CASCADE,
+        entity = Session::class,
+        parentColumns = ["_id"],
+        childColumns = ["session_id"]
+    )],
+    indices = [Index("session_id")]
+)
 data class LocationPoint(
     @PrimaryKey(autoGenerate = true)
     @ColumnInfo(name = "_id")
