@@ -36,4 +36,17 @@ interface SessionDao {
     @Transaction
     @Query("SELECT * FROM Session WHERE _id = :id")
     fun findByIdWithLocationPoints(id: Long): Flow<SessionWithLocationPoints>
+
+    @Query("SELECT SUM(distance) FROM Session")
+    fun getTotalDistance(): Flow<Float>
+
+    @Query("SELECT CAST(AVG(distance) AS BIGINT) FROM Session")
+    fun getAverageDistance(): Flow<Float>
+
+    @Query("SELECT AVG(duration) FROM Session")
+    fun getAverageDuration(): Flow<Long>
+
+    @Query("SELECT AVG(pace) FROM Session")
+    fun getAveragePace(): Flow<Float>
+
 }
