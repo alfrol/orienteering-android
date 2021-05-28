@@ -92,25 +92,25 @@ class MenuFragment : Fragment(R.layout.fragment_menu) {
         sessionViewModel.totalDistance.observe(viewLifecycleOwner, {
             with(binding) {
                 progressBarTotalDistance.visibility = View.GONE
-                tvTotalDistance.text = UIUtils.formatDistance(requireContext(), it)
+                tvTotalDistance.text = UIUtils.formatDistance(requireContext(), it ?: 0.0f)
             }
         })
         sessionViewModel.averageDistance.observe(viewLifecycleOwner, {
             with(binding) {
                 progressBarAverageDistance.visibility = View.GONE
-                tvAverageDistance.text = UIUtils.formatDistance(requireContext(), it)
+                tvAverageDistance.text = UIUtils.formatDistance(requireContext(), it ?: 0.0f)
             }
         })
         sessionViewModel.averageDuration.observe(viewLifecycleOwner, {
             with(binding) {
                 progressBarAverageDuration.visibility = View.GONE
-                tvAverageDuration.text = UIUtils.formatDuration(requireContext(), it, false)
+                tvAverageDuration.text = UIUtils.formatDuration(requireContext(), it ?: 0, false)
             }
         })
         sessionViewModel.averagePace.observe(viewLifecycleOwner, {
             with(binding) {
                 progressBarAveragePace.visibility = View.GONE
-                tvAveragePace.text = getString(R.string.pace, it)
+                tvAveragePace.text = getString(R.string.pace, it ?: 0.0f)
             }
         })
     }
