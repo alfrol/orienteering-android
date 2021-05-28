@@ -11,7 +11,6 @@ import android.net.ConnectivityManager
 import android.os.Build
 import android.os.Looper
 import androidx.core.app.NotificationCompat
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.*
 import androidx.lifecycle.Observer
 import androidx.navigation.NavDeepLinkBuilder
@@ -20,7 +19,6 @@ import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
-import com.google.android.gms.maps.model.LatLng
 import dagger.hilt.android.AndroidEntryPoint
 import ee.taltech.alfrol.hw02.C
 import ee.taltech.alfrol.hw02.R
@@ -47,10 +45,10 @@ class LocationService : LifecycleService() {
 
     companion object {
         val isRunning = MutableLiveData<Boolean>()
-        val pathPoints = MutableLiveData<MutableList<LatLng>>()
-        val checkpoints = MutableLiveData<MutableList<LatLng>>()
-        val waypoint = MutableLiveData<LatLng?>()
-        val currentLocation = MutableLiveData<LatLng>()
+        val pathPoints = MutableLiveData<MutableList<Location>>()
+        val checkpoints = MutableLiveData<MutableList<Location>>()
+        val waypoint = MutableLiveData<Location?>()
+        val currentLocation = MutableLiveData<Location>()
 
         val totalDistance = MutableLiveData<Float>()
         val totalAveragePace = MutableLiveData<Float>()
@@ -169,18 +167,11 @@ class LocationService : LifecycleService() {
      * Observer for changes in [checkpoints].
      * Used for saving the last checkpoint when updated.
      */
-    private val checkpointsObserver = Observer<MutableList<LatLng>> {
+    private val checkpointsObserver = Observer<MutableList<Location>> {
         it?.let { ckpts ->
             if (ckpts.isNotEmpty()) {
                 val lastCheckpoint = ckpts.last()
-
-                // Creating a dummy location here, ugly but it's easier to do like that
-                val location = Location("").apply {
-                    latitude = lastCheckpoint.latitude
-                    longitude = lastCheckpoint.longitude
-                }
-
-                saveLocation(location, C.CP_TYPE_ID)
+                saveLocation(lastCheckpoint, C.CP_TYPE_ID)
             }
         }
     }
@@ -189,14 +180,9 @@ class LocationService : LifecycleService() {
      * Observer for changes in [waypoint].
      * Used for saving the waypoint when it's updated.
      */
-    private val waypointObserver = Observer<LatLng?> {
+    private val waypointObserver = Observer<Location?> {
         it?.let { wp ->
-            val location = Location("").apply {
-                latitude = wp.latitude
-                longitude = wp.longitude
-            }
-
-            saveLocation(location, C.WP_TYPE_ID)
+            saveLocation(wp, C.WP_TYPE_ID)
         }
     }
 
@@ -248,8 +234,7 @@ class LocationService : LifecycleService() {
         if (UIUtils.hasLocationPermission(this)) {
             fusedLocationProviderClient.lastLocation.addOnSuccessListener {
                 it?.apply {
-                    val latLng = LatLng(latitude, longitude)
-                    currentLocation.value = latLng
+                    currentLocation.value = it
                 }
             }
 
@@ -280,8 +265,7 @@ class LocationService : LifecycleService() {
             if (pathPoints.value?.isNotEmpty() == true) {
                 val lastPoint = pathPoints.value?.last()
                 if (lastPoint != null) {
-                    val latLng = LatLng(location.latitude, location.longitude)
-                    val distance = UIUtils.calculateDistance(lastPoint, latLng)
+                    val distance = UIUtils.calculateDistance(lastPoint, location)
 
                     if (distance > LOCATION_DISTANCE_THRESHOLD) {
                         return
@@ -322,9 +306,8 @@ class LocationService : LifecycleService() {
      * Add a new location point to the path point list.
      */
     private fun addPathPoint(location: Location) {
-        val latLng = LatLng(location.latitude, location.longitude)
         pathPoints.value?.apply {
-            add(latLng)
+            add(location)
             pathPoints.value = this
 
             updateDistance()
@@ -452,16 +435,17 @@ class LocationService : LifecycleService() {
      */
     @SuppressLint("NewApi")
     fun saveLocation(location: Location, type: String) {
-        val recordedAtMillis = System.currentTimeMillis()
-        val recordedAt = UIUtils.timeMillisToIsoOffset(System.currentTimeMillis())
+        val recordedAt = UIUtils.timeMillisToIsoOffset(location.time)
 
         // Don't save waypoints to database.
         if (type != C.WP_TYPE_ID) {
             val locationPoint = LocationPoint(
                 sessionId = session.id,
+                recordedAt = location.time,
                 latitude = location.latitude,
                 longitude = location.longitude,
-                recordedAt = recordedAtMillis,
+                altitude = location.altitude,
+                accuracy = location.accuracy,
                 type = type
             )
             saveLocationToDb(locationPoint)

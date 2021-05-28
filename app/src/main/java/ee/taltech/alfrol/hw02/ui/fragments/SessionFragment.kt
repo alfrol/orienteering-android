@@ -279,10 +279,15 @@ class SessionFragment : Fragment(R.layout.fragment_session),
         addWaypoint()
     }
 
+    /**
+     * Setup the google map for preview by removing all unnecessary buttons etc.
+     */
     private fun setupMapForPreview() {
         with(binding) {
             fabSessionStart.visibility = View.GONE
             fabSettings.visibility = View.GONE
+            fabAddCheckpoint.visibility = View.GONE
+            fabAddWaypoint.visibility = View.GONE
         }
 
         sessionViewModel.getSessionWithLocationPoints(args.previewedSessionId)
@@ -340,17 +345,27 @@ class SessionFragment : Fragment(R.layout.fragment_session),
             updateIsRunning(it)
         })
         LocationService.pathPoints.observe(viewLifecycleOwner, {
-            updatePathPoints(it)
+            it?.let { points ->
+                val latLntPoints = UIUtils.mapLocationToLatLng(points)
+                updatePathPoints(latLntPoints)
+            }
         })
         LocationService.checkpoints.observe(viewLifecycleOwner, {
-            updateCheckpoints(it)
+            it?.let { ckpts ->
+                val latLntPoints = UIUtils.mapLocationToLatLng(ckpts)
+                updateCheckpoints(latLntPoints)
+            }
         })
         LocationService.waypoint.observe(viewLifecycleOwner, {
-            updateWaypoint(it)
+            it?.let { location ->
+                val latLng = LatLng(location.latitude, location.longitude)
+                updateWaypoint(latLng)
+            }
         })
         LocationService.currentLocation.observe(viewLifecycleOwner, {
             isFollowingDevice = true
-            navigateToLocation(it)
+            val latLng = LatLng(it.latitude, it.longitude)
+            navigateToLocation(latLng)
         })
         LocationService.totalDistance.observe(viewLifecycleOwner, {
             updateDistance(it, SESSION_DATA_TOTAL)

@@ -111,7 +111,7 @@ object UIUtils {
      * @param second Point two.
      * @return Distance between two points in meters.
      */
-    fun calculateDistance(first: LatLng, second: LatLng): Float {
+    fun calculateDistance(first: Location, second: Location): Float {
         val result = FloatArray(1)
         Location.distanceBetween(
             first.latitude,
@@ -122,6 +122,12 @@ object UIUtils {
         )
         return result[0]
     }
+
+    /**
+     * Map the list of [Location] objects to list of [LatLng] objects.
+     */
+    fun mapLocationToLatLng(location: List<Location>): MutableList<LatLng> =
+        location.map { LatLng(it.latitude, it.longitude) }.toMutableList()
 
     /**
      * Calculate the pace.
