@@ -23,6 +23,7 @@
     <string name="text_distance">Distance</string>
     <string name="text_duration">Duration</string>
     <string name="text_pace">Pace</string>
+    <string name="text_total_statistics">Total statistics</string>
     <string name="text_stopping_confirmation">Are you sure you want to stop the session? You will not be able to start it again.</string>
     <string name="text_session_ended">Session has been ended. You can now view it in the history.</string>
     <string name="text_session_removal_confirmation">Are you sure you want to remove this session? This action is irreversible.</string>

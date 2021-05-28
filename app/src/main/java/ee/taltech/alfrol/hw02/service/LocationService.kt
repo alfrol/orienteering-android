@@ -2,6 +2,7 @@ package ee.taltech.alfrol.hw02.service
 
 import android.annotation.SuppressLint
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.location.Location
@@ -10,6 +11,7 @@ import android.net.ConnectivityManager
 import android.os.Build
 import android.os.Looper
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.*
 import androidx.lifecycle.Observer
 import androidx.navigation.NavDeepLinkBuilder
@@ -602,9 +604,19 @@ class LocationService : LifecycleService() {
     private fun createNotification(text: String = "") =
         NotificationCompat.Builder(this, C.NOTIFICATION_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle(getString(R.string.app_name))
+            .setContentTitle(getString(R.string.text_total_statistics))
             .setContentText(text)
             .setContentIntent(createPendingIntent())
+            .addAction(
+                R.drawable.ic_checkpoint,
+                getString(R.string.title_add_checkpoint),
+                createActionPendingIntent(C.ACTION_ADD_CHECKPOINT)
+            )
+            .addAction(
+                R.drawable.ic_waypoint,
+                getString(R.string.title_add_waypoint),
+                createActionPendingIntent(C.ACTION_ADD_WAYPOINT)
+            )
             .build()
 
     /**
@@ -616,6 +628,23 @@ class LocationService : LifecycleService() {
         .setGraph(R.navigation.nav_graph)
         .setDestination(R.id.sessionFragment)
         .createPendingIntent()
+
+    /**
+     * Create a pending intent for use in notification as action.
+     *
+     * The intent is constructed such that when called, it will start
+     * this service with the necessary action.
+     *
+     * @param action Expected to be one of the [C.ACTION_ADD_CHECKPOINT] or [C.ACTION_ADD_WAYPOINT].
+     */
+    private fun createActionPendingIntent(action: String) = PendingIntent.getService(
+        this,
+        0,
+        Intent(this, this::class.java).apply {
+            this.action = action
+        },
+        PendingIntent.FLAG_UPDATE_CURRENT
+    )
 
     /**
      * Construct a notification text.
