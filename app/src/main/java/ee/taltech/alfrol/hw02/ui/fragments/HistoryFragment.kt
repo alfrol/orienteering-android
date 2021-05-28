@@ -10,7 +10,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import dagger.hilt.android.AndroidEntryPoint
 import ee.taltech.alfrol.hw02.adapters.SessionAdapter
 import ee.taltech.alfrol.hw02.databinding.FragmentHistoryBinding
-import ee.taltech.alfrol.hw02.ui.viewmodels.SessionViewModel
+import ee.taltech.alfrol.hw02.ui.viewmodels.HistoryViewModel
 
 @AndroidEntryPoint
 class HistoryFragment : Fragment() {
@@ -18,7 +18,7 @@ class HistoryFragment : Fragment() {
     private var _binding: FragmentHistoryBinding? = null
     private val binding get() = _binding!!
 
-    private val sessionViewModel: SessionViewModel by viewModels()
+    private val historyViewModel: HistoryViewModel by viewModels()
 
     private lateinit var sessionAdapter: SessionAdapter
 
@@ -39,7 +39,7 @@ class HistoryFragment : Fragment() {
             layoutManager = LinearLayoutManager(requireContext())
         }
 
-        sessionViewModel.sessions.observe(viewLifecycleOwner, {
+        historyViewModel.sessionsSortedByRecordedAt.observe(viewLifecycleOwner, {
             sessionAdapter.submitList(it)
         })
     }
