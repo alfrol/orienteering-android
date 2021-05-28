@@ -5,7 +5,6 @@ import android.annotation.SuppressLint
 import android.content.Intent
 import android.graphics.Point
 import android.os.Bundle
-import android.util.Log
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
@@ -20,6 +19,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import com.google.android.gms.location.LocationServices
@@ -44,6 +44,7 @@ import ee.taltech.alfrol.hw02.ui.states.CompassState
 import ee.taltech.alfrol.hw02.ui.utils.CompassListener
 import ee.taltech.alfrol.hw02.ui.utils.UIUtils
 import ee.taltech.alfrol.hw02.ui.viewmodels.SessionViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import pub.devrel.easypermissions.AppSettingsDialog
@@ -272,8 +273,11 @@ class SessionFragment : Fragment(R.layout.fragment_session),
         if (UIUtils.hasLocationPermission(requireContext())) {
             map?.isMyLocationEnabled = true
 
-            // When the map is ready try to focus on current device location
-            onClickCenterView.onClick(null)
+            // When the map is ready try to focus on current device location, but give it some time
+            lifecycleScope.launchWhenCreated {
+                delay(1000L)
+                onClickCenterView.onClick(null)
+            }
         } else {
             checkLocationSettings()
         }
@@ -295,8 +299,6 @@ class SessionFragment : Fragment(R.layout.fragment_session),
                 it?.let { sessionWithLocationPoints ->
                     val session = sessionWithLocationPoints.session
                     val locationPoints = sessionWithLocationPoints.locationPoints
-
-                    Log.d("SessionFragment", "setupMapForPreview: $locationPoints")
 
                     updateDistance(session.distance, SESSION_DATA_TOTAL)
                     updateDuration(session.duration, SESSION_DATA_TOTAL)
