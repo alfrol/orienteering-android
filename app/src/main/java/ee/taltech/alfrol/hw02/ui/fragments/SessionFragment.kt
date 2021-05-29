@@ -4,7 +4,6 @@ import android.annotation.SuppressLint
 import android.content.Intent
 import android.location.Location
 import android.os.Bundle
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -318,6 +317,7 @@ class SessionFragment : Fragment(R.layout.fragment_session),
      */
     private val onClickSessionStart = View.OnClickListener {
         if (isTracking) {
+            sessionViewModel.createSession()
             startLocationService(C.ACTION_STOP_SERVICE)
             startStopwatchService(C.ACTION_STOP_SERVICE)
         } else {

@@ -22,6 +22,8 @@ class SessionRepository @Inject constructor(private val sessionDao: SessionDao) 
 
     fun findByExternalId(externalId: String) = sessionDao.findByExternalId(externalId)
 
+    fun findById(id: Long) = sessionDao.findById(id)
+
     fun findByIdWithLocationPoints(id: Long) = sessionDao.findByIdWithLocationPoints(id)
 
     fun getTotalDistance() = sessionDao.getTotalDistance()

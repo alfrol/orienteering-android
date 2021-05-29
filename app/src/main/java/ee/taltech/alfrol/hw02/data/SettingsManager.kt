@@ -27,6 +27,7 @@ class SettingsManager @Inject constructor(@ApplicationContext context: Context) 
             longPreferencesKey("location_update_fastest_interval")
         val POLYLINE_WIDTH_KEY = floatPreferencesKey("polyline_width")
         val POLYLINE_COLOR_KEY = intPreferencesKey("polyline_color")
+        val ACTIVE_SESSION_ID_KEY = longPreferencesKey("active_session_id")
     }
 
     private val datastore = context.datastore
@@ -37,7 +38,7 @@ class SettingsManager @Inject constructor(@ApplicationContext context: Context) 
      * @param key Key to use for querying the value from the datastore.
      * @param default Default value to use in case it is not present in the datastore.
      */
-    fun <T> getValue(key: Preferences.Key<T>, default: T?): Flow<T?> = datastore.data
+    fun <T> getValue(key: Preferences.Key<T>, default: T? = null): Flow<T?> = datastore.data
         .catch { exception ->
             if (exception is IOException) {
                 emit(emptyPreferences())

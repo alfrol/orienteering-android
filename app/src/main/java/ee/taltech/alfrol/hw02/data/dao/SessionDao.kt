@@ -29,6 +29,9 @@ interface SessionDao {
     @Query("SELECT * FROM Session ORDER BY pace DESC")
     fun findAllSortedByPace(): Flow<List<Session>>
 
+    @Query("SELECT * FROM Session WHERE _id = :id")
+    fun findById(id: Long): Flow<Session>
+
     @Transaction
     @Query("SELECT * FROM Session WHERE external_id = :id")
     fun findByExternalId(id: String): Flow<List<SessionWithLocationPoints>>

@@ -31,7 +31,7 @@ class LocationService : LifecycleService() {
         val currentLocation = MutableLiveData<Location>()
         val pathPoints = MutableLiveData<MutableList<Location>>()
         val checkpoints = MutableLiveData<MutableList<Location>>()
-        val waypoint = MutableLiveData<Location>()
+        val waypoint = MutableLiveData<Location?>()
 
         // In meters
         private const val MAX_ACCURACY = 30.0f
@@ -80,6 +80,8 @@ class LocationService : LifecycleService() {
     private fun postInitialValues() {
         isTracking.postValue(false)
         pathPoints.postValue(mutableListOf())
+        checkpoints.postValue(mutableListOf())
+        waypoint.postValue(null)
     }
 
     /**
