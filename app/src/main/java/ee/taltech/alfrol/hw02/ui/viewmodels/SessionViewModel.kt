@@ -2,18 +2,22 @@ package ee.taltech.alfrol.hw02.ui.viewmodels
 
 import android.location.Location
 import androidx.lifecycle.*
+import com.google.android.gms.maps.model.Polyline
 import dagger.hilt.android.lifecycle.HiltViewModel
 import ee.taltech.alfrol.hw02.C
 import ee.taltech.alfrol.hw02.R
+import ee.taltech.alfrol.hw02.data.SettingsManager
 import ee.taltech.alfrol.hw02.data.model.Session
 import ee.taltech.alfrol.hw02.data.repositories.LocationPointRepository
 import ee.taltech.alfrol.hw02.data.repositories.SessionRepository
 import ee.taltech.alfrol.hw02.ui.states.CompassState
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class SessionViewModel @Inject constructor(
+    private val settingsManager: SettingsManager,
     private val sessionRepository: SessionRepository,
     private val locationPointRepository: LocationPointRepository
 ) : ViewModel() {
@@ -42,8 +46,30 @@ class SessionViewModel @Inject constructor(
     val averagePace: LiveData<Float> =
         sessionRepository.getAveragePace().asLiveData()
 
+    private var _polylineColor = MutableLiveData<Int>()
+    val polylineColor: LiveData<Int> = _polylineColor
+
+    private var _polylineWidth = MutableLiveData<Float>()
+    val polylineWidth: LiveData<Float> = _polylineWidth
+
     private var _compassState = MutableLiveData<CompassState>()
     val compassState: LiveData<CompassState> = _compassState
+
+    init {
+        viewModelScope.launch {
+            val color = settingsManager.getValue(
+                SettingsManager.POLYLINE_COLOR_KEY,
+                C.DEFAULT_POLYLINE_COLOR
+            ).first()
+            val width = settingsManager.getValue(
+                SettingsManager.POLYLINE_WIDTH_KEY,
+                C.DEFAULT_POLYLINE_WIDTH
+            ).first()
+
+            _polylineColor.postValue(color!!)
+            _polylineWidth.postValue(width!!)
+        }
+    }
 
     fun getSessionWithLocationPoints(id: Long) =
         sessionRepository.findByIdWithLocationPoints(id).asLiveData()
@@ -59,6 +85,24 @@ class SessionViewModel @Inject constructor(
      */
     fun saveLocationPoint(location: Location, type: String) {
 
+    }
+
+    /**
+     * Update and save polyline settings to the datastore.
+     *
+     * @param polyline Polyline containing the new width, color values to save.
+     */
+    fun savePolyline(polyline: Polyline) {
+        val color = polyline.color
+        val width = polyline.width
+
+        viewModelScope.launch {
+            settingsManager.setValue(SettingsManager.POLYLINE_COLOR_KEY, color)
+            settingsManager.setValue(SettingsManager.POLYLINE_WIDTH_KEY, width)
+        }
+
+        _polylineColor.postValue(color)
+        _polylineWidth.postValue(width)
     }
 
     /**

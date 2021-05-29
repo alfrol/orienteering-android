@@ -13,8 +13,8 @@ import ee.taltech.alfrol.hw02.C
 import ee.taltech.alfrol.hw02.R
 import ee.taltech.alfrol.hw02.data.SettingsManager
 import ee.taltech.alfrol.hw02.databinding.FragmentMenuBinding
-import ee.taltech.alfrol.hw02.utils.UIUtils
 import ee.taltech.alfrol.hw02.ui.viewmodels.SessionViewModel
+import ee.taltech.alfrol.hw02.utils.UIUtils
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 
@@ -59,7 +59,7 @@ class MenuFragment : Fragment(R.layout.fragment_menu) {
         super.onViewCreated(view, savedInstanceState)
 
         viewLifecycleOwner.lifecycleScope.launchWhenCreated {
-            val user = settingsManager.loggedInUser.first()
+            val user = settingsManager.getValue(SettingsManager.LOGGED_IN_USER_ID_KEY, null).first()
             if (user == null) {
                 val actionAuthenticate = MenuFragmentDirections.actionAuthenticate()
                 findNavController().navigate(actionAuthenticate)

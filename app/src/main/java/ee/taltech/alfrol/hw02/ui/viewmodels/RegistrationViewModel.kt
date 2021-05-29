@@ -66,8 +66,8 @@ class RegistrationViewModel @Inject constructor(
                         val user = User(firstName = firstName, lastName = lastName, email = email)
                         val userId = userRepository.insertUser(user)
 
-                        settingsManager.saveToken(token)
-                        settingsManager.saveLoggedInUser(userId)
+                        settingsManager.setValue(SettingsManager.TOKEN_KEY, token)
+                        settingsManager.setValue(SettingsManager.LOGGED_IN_USER_ID_KEY, userId)
 
                         _registrationResult.postValue(AuthenticationResult(success = true))
                     }

@@ -45,7 +45,8 @@ class WelcomeFragment : Fragment(R.layout.fragment_welcome) {
         savedStateHandle.set(C.IS_USER_LOGGED_IN_KEY, false)
 
         viewLifecycleOwner.lifecycleScope.launchWhenCreated {
-            val isLoggedIn = settingsManager.loggedInUser.first() != null
+            val user = settingsManager.getValue(SettingsManager.LOGGED_IN_USER_ID_KEY, null).first()
+            val isLoggedIn = user != null
             savedStateHandle.set(C.IS_USER_LOGGED_IN_KEY, isLoggedIn)
 
             if (isLoggedIn) {

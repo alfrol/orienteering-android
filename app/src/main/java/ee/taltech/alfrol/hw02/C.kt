@@ -40,9 +40,12 @@ object C {
     const val ACTION_GET_CURRENT_LOCATION = "GET_CURRENT_LOCATION"
     const val ACTION_ADD_CHECKPOINT = "ADD_CHECKPOINT"
     const val ACTION_ADD_WAYPOINT = "ADD_WAYPOINT"
+    const val ACTION_LOCATION_ACTION = "LOCATION_ACTION"
+    const val ACTION_OPEN_SESSION = "OPEN_SESSION"
 
     const val STOPWATCH_TYPE_KEY = "stopwatch_type"
     const val LOCATION_REQUEST_KEY = "location_request"
+    const val LOCATION_ACTION_COMMAND = "location_action_command"
 
     const val STOPWATCH_TOTAL = 0
     const val STOPWATCH_CHECKPOINT = 1
@@ -52,6 +55,8 @@ object C {
     const val DEFAULT_LOCATION_UPDATE_FASTEST_INTERVAL = 5000L
     const val DEFAULT_MAP_ZOOM = 17.0f
     const val DEFAULT_MAP_CAMERA_ANIMATION_DURATION = 2000
+    const val DEFAULT_POLYLINE_WIDTH = 10.0f
+    const val DEFAULT_POLYLINE_COLOR = R.color.primary
 
     const val LOC_TYPE_ID = "00000000-0000-0000-0000-000000000001"
     const val WP_TYPE_ID = "00000000-0000-0000-0000-000000000002"
@@ -59,7 +64,4 @@ object C {
 
     const val LOCATION_PERMISSION_REQUEST_CODE = 1
     const val STORAGE_WRITE_PERMISSION_REQUEST_CODE = 2
-    const val LOCATION_SETTINGS_REQUEST_CODE = 3
-    const val SESSION_START_REQUEST_CODE = 4
-    const val MY_LOCATION_REQUEST_CODE = 5
 }

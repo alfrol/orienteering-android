@@ -51,8 +51,8 @@ class LoginViewModel @Inject constructor(
                     //  but if someone tries to log in from other phone, then this
                     //  will not work since user will not be in the database
                     val user = userRepository.findByEmail(email).first()
-                    settingsManager.saveToken(token)
-                    settingsManager.saveLoggedInUser(user.id)
+                    settingsManager.setValue(SettingsManager.TOKEN_KEY, token)
+                    settingsManager.setValue(SettingsManager.LOGGED_IN_USER_ID_KEY, user.id)
 
                     _loginResult.postValue(AuthenticationResult(success = true))
                 }

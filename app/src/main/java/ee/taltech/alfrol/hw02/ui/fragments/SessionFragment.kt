@@ -14,6 +14,7 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
+import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import androidx.navigation.fragment.navArgs
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
@@ -29,7 +30,9 @@ import ee.taltech.alfrol.hw02.service.LocationService
 import ee.taltech.alfrol.hw02.ui.states.CompassState
 import ee.taltech.alfrol.hw02.ui.viewmodels.SessionViewModel
 import ee.taltech.alfrol.hw02.utils.CompassListener
+import ee.taltech.alfrol.hw02.utils.LocationUtils
 import ee.taltech.alfrol.hw02.utils.PermissionUtils
+import ee.taltech.alfrol.hw02.utils.UIUtils
 import kotlinx.coroutines.delay
 import pub.devrel.easypermissions.AppSettingsDialog
 import pub.devrel.easypermissions.EasyPermissions
@@ -74,7 +77,15 @@ class SessionFragment : Fragment(R.layout.fragment_session),
     private var currentCompassAngle = 0.0f
     private var isCompassEnabled = false
     private var areSettingsOpen = false
+
     private var map: GoogleMap? = null
+    private var polylineColor = C.DEFAULT_POLYLINE_COLOR
+    private var polylineWidth = C.DEFAULT_POLYLINE_WIDTH
+    private var waypointMarker: Marker? = null
+
+    private var pathPoints: MutableList<Location> = mutableListOf()
+    private var checkpoints: MutableList<Location> = mutableListOf()
+    private var waypoint: Location? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -175,6 +186,7 @@ class SessionFragment : Fragment(R.layout.fragment_session),
             this?.isMyLocationButtonEnabled = false
             this?.isCompassEnabled = false
         }
+        restoreMapData()
     }
 
     override fun onMapClick(p0: LatLng) {
@@ -234,13 +246,26 @@ class SessionFragment : Fragment(R.layout.fragment_session),
         _binding = null
     }
 
+    /**
+     * Start observing the livedata changes from the [LocationService] and [SessionViewModel].
+     */
     private fun startObserving() {
         LocationService.isTracking.observe(viewLifecycleOwner, {
             isTracking = it ?: false
             setSessionButtonStyle()
+            setLocationActionButtonsVisibility()
         })
         LocationService.pathPoints.observe(viewLifecycleOwner, {
-
+            pathPoints = it ?: mutableListOf()
+            addLastPathPoint()
+        })
+        LocationService.checkpoints.observe(viewLifecycleOwner, {
+            checkpoints = it ?: mutableListOf()
+            addLastCheckpoint()
+        })
+        LocationService.waypoint.observe(viewLifecycleOwner, {
+            waypoint = it
+            addWaypoint()
         })
         LocationService.currentLocation.observe(viewLifecycleOwner, {
             it?.let { loc ->
@@ -265,6 +290,14 @@ class SessionFragment : Fragment(R.layout.fragment_session),
             this.action = action
             requireContext().startService(this)
         }
+
+    /**
+     * Send the broadcast with the given action.
+     *
+     * @param action Action to use in the broadcast intent.
+     */
+    private fun sendLocationActionBroadcast(action: String) =
+        LocalBroadcastManager.getInstance(requireContext()).sendBroadcast(Intent(action))
 
     /**
      * Listener for session start/stop button.
@@ -315,14 +348,121 @@ class SessionFragment : Fragment(R.layout.fragment_session),
      * Listener for checkpoint adding button.
      */
     private val onClickAddCheckpoint = View.OnClickListener {
-
+        if (isTracking) {
+            sendLocationActionBroadcast(C.ACTION_ADD_CHECKPOINT)
+        }
     }
 
     /**
      * Listener for waypoint adding button.
      */
     private val onClickAddWaypoint = View.OnClickListener {
+        if (isTracking) {
+            sendLocationActionBroadcast(C.ACTION_ADD_WAYPOINT)
+        }
+    }
 
+    /**
+     * Add the last point from the path points to the map.
+     */
+    private fun addLastPathPoint() {
+        if (!isTracking || pathPoints.size < 2) {
+            return
+        }
+
+        val lastPathPoint = pathPoints.last()
+        val preLastPathPoint = pathPoints[pathPoints.lastIndex - 1]
+        val latLngLast = LatLng(lastPathPoint.latitude, lastPathPoint.longitude)
+        val latLngPreLast = LatLng(preLastPathPoint.latitude, preLastPathPoint.longitude)
+
+        val polylineOptions =
+            UIUtils.getPolylineOptions(requireContext(), polylineColor, polylineWidth)
+        polylineOptions.add(latLngPreLast).add(latLngLast)
+        map?.addPolyline(polylineOptions)
+
+        // If following the device then always keep the last path point centered.
+        if (isFollowingDevice) {
+            navigateToCurrentLocation(lastPathPoint)
+        }
+    }
+
+    /**
+     * Add all the points from the path points list to the map.
+     */
+    private fun addAllPathPoints() {
+        if (pathPoints.isEmpty()) {
+            return
+        }
+
+        val polylineOptions =
+            UIUtils.getPolylineOptions(requireContext(), polylineColor, polylineWidth)
+        polylineOptions.addAll(LocationUtils.mapLocationToLatLng(pathPoints))
+        map?.addPolyline(polylineOptions)
+
+        if (isFollowingDevice) {
+            navigateToCurrentLocation(pathPoints.last())
+        }
+    }
+
+    /**
+     * Add the last point from the checkpoints list to the map.
+     */
+    private fun addLastCheckpoint() {
+        if (!isTracking || checkpoints.isEmpty()) {
+            return
+        }
+
+        val lastCheckpoint = checkpoints.last()
+        val latLng = LatLng(lastCheckpoint.latitude, lastCheckpoint.longitude)
+        val markerOptions = MarkerOptions().apply {
+            position(latLng)
+            icon(BitmapDescriptorFactory.fromResource(R.drawable.ic_checkpoint_marker))
+        }
+        map?.addMarker(markerOptions)
+    }
+
+    /**
+     * Add all the points from the checkpoints list to the map.
+     */
+    private fun addAllCheckpoints() =
+        checkpoints.forEach {
+            val latLng = LatLng(it.latitude, it.longitude)
+            val markerOptions = MarkerOptions().apply {
+                position(latLng)
+                icon(BitmapDescriptorFactory.fromResource(R.drawable.ic_checkpoint_marker))
+            }
+            map?.addMarker(markerOptions)
+        }
+
+    /**
+     * Add a new waypoint on the map.
+     *
+     * If there was a waypoint previously then it gets replaced by the new one.
+     */
+    private fun addWaypoint() {
+        if (!isTracking || waypoint == null) {
+            return
+        }
+
+        if (waypointMarker != null) {
+            waypointMarker!!.remove()
+        }
+
+        val latLng = LatLng(waypoint!!.latitude, waypoint!!.longitude)
+        val markerOptions = MarkerOptions().apply {
+            position(latLng)
+            icon(BitmapDescriptorFactory.fromResource(R.drawable.ic_waypoint_marker))
+        }
+        waypointMarker = map?.addMarker(markerOptions)
+    }
+
+    /**
+     * Restore polyline, checkpoints and waypoint data.
+     */
+    private fun restoreMapData() {
+        addAllPathPoints()
+        addAllCheckpoints()
+        addWaypoint()
     }
 
     /**
@@ -376,6 +516,21 @@ class SessionFragment : Fragment(R.layout.fragment_session),
                 ContextCompat.getColorStateList(requireContext(), color)
             fabSessionStart.setImageResource(icon)
         }
+
+    /**
+     * Set the visibility of Add Checkpoint and Add Waypoint buttons.
+     */
+    private fun setLocationActionButtonsVisibility() {
+        with(binding) {
+            val visibility = when (isTracking) {
+                true -> View.VISIBLE
+                false -> View.GONE
+            }
+
+            fabAddCheckpoint.visibility = visibility
+            fabAddWaypoint.visibility = visibility
+        }
+    }
 
     /**
      * Set the visibility of settings buttons.

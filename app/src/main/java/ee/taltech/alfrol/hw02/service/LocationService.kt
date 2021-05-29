@@ -1,7 +1,10 @@
 package ee.taltech.alfrol.hw02.service
 
 import android.annotation.SuppressLint
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.location.Location
 import android.os.Looper
 import androidx.lifecycle.LifecycleService
@@ -10,6 +13,7 @@ import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
+import dagger.hilt.android.AndroidEntryPoint
 import ee.taltech.alfrol.hw02.C
 import ee.taltech.alfrol.hw02.data.SettingsManager
 import ee.taltech.alfrol.hw02.utils.LocationUtils
@@ -18,12 +22,21 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 
+@AndroidEntryPoint
 class LocationService : LifecycleService() {
 
     companion object {
         val isTracking = MutableLiveData<Boolean>()
-        val pathPoints = MutableLiveData<MutableList<Location>>()
         val currentLocation = MutableLiveData<Location>()
+        val pathPoints = MutableLiveData<MutableList<Location>>()
+        val checkpoints = MutableLiveData<MutableList<Location>>()
+        val waypoint = MutableLiveData<Location>()
+
+        // In meters
+        private const val MAX_ACCURACY = 30.0f
+        private const val MAX_DISTANCE = 50.0f
+        private const val MIN_DISTANCE = 3.0f
+        private const val PROVIDER = "fused"
     }
 
     @Inject
@@ -31,8 +44,11 @@ class LocationService : LifecycleService() {
 
     private lateinit var fusedLocationProviderClient: FusedLocationProviderClient
 
-    private var _isTracking = false
-    private var _pathPoints: MutableList<Location> = mutableListOf()
+    private val intentFilter = IntentFilter(C.ACTION_LOCATION_ACTION).apply {
+        addAction(C.ACTION_ADD_CHECKPOINT)
+        addAction(C.ACTION_ADD_WAYPOINT)
+    }
+    private val notificationBroadcastReceiver = LocationActionReceiver()
 
     override fun onCreate() {
         super.onCreate()
@@ -50,26 +66,40 @@ class LocationService : LifecycleService() {
         return super.onStartCommand(intent, flags, startId)
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        if (isTracking.value == true) {
+            stopTracking()
+        }
+    }
+
     /**
      * Post the initial values for the livedata.
      */
     private fun postInitialValues() {
-        isTracking.postValue(_isTracking)
-        pathPoints.postValue(_pathPoints)
+        isTracking.postValue(false)
+        pathPoints.postValue(mutableListOf())
     }
 
     /**
      * Start tracking the device location.
      */
     private fun startTracking() {
-
+        isTracking.postValue(true)
+        requestLocationUpdates()
+        registerReceiver(notificationBroadcastReceiver, intentFilter)
+        startForeground(C.NOTIFICATION_ID, LocationUtils.createNotification(this, ""))
     }
 
     /**
      * Stop tracking the device location.
      */
     private fun stopTracking() {
-
+        postInitialValues()
+        fusedLocationProviderClient.removeLocationUpdates(callback)
+        unregisterReceiver(notificationBroadcastReceiver)
+        stopForeground(true)
+        stopSelf()
     }
 
     /**
@@ -81,9 +111,12 @@ class LocationService : LifecycleService() {
             return
         }
 
+        val isTrackingValue = isTracking.value == true
+        val pathPointsValue = pathPoints.value ?: mutableListOf()
+
         // When tracking then current location is essentially the last location in path points list
-        if (_isTracking && _pathPoints.isNotEmpty()) {
-            currentLocation.postValue(_pathPoints.last())
+        if (isTrackingValue && pathPointsValue.isNotEmpty()) {
+            currentLocation.postValue(pathPointsValue.last())
         } else {
             fusedLocationProviderClient.lastLocation.addOnSuccessListener {
                 currentLocation.postValue(it)
@@ -104,8 +137,14 @@ class LocationService : LifecycleService() {
         val fastestInterval: Long
 
         runBlocking {
-            interval = settingsManager.locationUpdateInterval.first()
-            fastestInterval = settingsManager.locationUpdateFastestInterval.first()
+            interval = settingsManager.getValue(
+                SettingsManager.LOCATION_UPDATE_INTERVAL_LEY,
+                C.DEFAULT_LOCATION_UPDATE_INTERVAL
+            ).first()!!
+            fastestInterval = settingsManager.getValue(
+                SettingsManager.LOCATION_UPDATE_FASTEST_INTERVAL_LEY,
+                C.DEFAULT_LOCATION_UPDATE_FASTEST_INTERVAL
+            ).first()!!
         }
 
         val locationRequest = LocationUtils.getLocationRequest(interval, fastestInterval)
@@ -122,7 +161,58 @@ class LocationService : LifecycleService() {
     private val callback = object : LocationCallback() {
 
         override fun onLocationResult(locationResult: LocationResult) {
-            super.onLocationResult(locationResult)
+            val location = locationResult.lastLocation ?: return
+
+            val pathPointsValue = pathPoints.value ?: mutableListOf()
+            if (pathPointsValue.isEmpty()) {
+                addPoint(pathPoints, location)
+                return
+            }
+
+            val distance = LocationUtils.calculateDistance(location, pathPointsValue.last())
+
+            // Make some filtering of undesired points.
+            if (location.accuracy > MAX_ACCURACY) {
+                return
+            }
+            if (distance > MAX_DISTANCE || distance < MIN_DISTANCE) {
+                return
+            }
+            if (location.provider != PROVIDER) {
+                return
+            }
+
+            addPoint(pathPoints, location)
+        }
+    }
+
+    /**
+     * Add a new point to the list.
+     *
+     * @param points Points list where to add the new one.
+     * @param location New location point to add.
+     */
+    private fun addPoint(points: MutableLiveData<MutableList<Location>>, location: Location) {
+        points.value?.apply {
+            add(location)
+            points.postValue(this)
+        } ?: points.postValue(mutableListOf(location))
+    }
+
+    /**
+     * Broadcast receiver for the service notification actions.
+     */
+    inner class LocationActionReceiver : BroadcastReceiver() {
+
+        override fun onReceive(context: Context?, intent: Intent?) {
+            intent?.let {
+                val lastPoint = pathPoints.value?.last() ?: return
+
+                when (it.action) {
+                    C.ACTION_ADD_CHECKPOINT -> addPoint(checkpoints, lastPoint)
+                    C.ACTION_ADD_WAYPOINT -> waypoint.postValue(lastPoint)
+                }
+            }
         }
     }
 }

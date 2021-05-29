@@ -5,7 +5,6 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.*
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
-import ee.taltech.alfrol.hw02.C
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
@@ -21,20 +20,24 @@ class SettingsManager @Inject constructor(@ApplicationContext context: Context) 
     companion object {
         const val DATASTORE_NAME = "gps_sport_map_settings_datastore"
 
-        private val TOKEN_KEY = stringPreferencesKey("token")
-        private val LOGGED_IN_USER_ID_KEY = longPreferencesKey("logged_in_user_id")
-        private val LOCATION_UPDATE_INTERVAL_LEY = longPreferencesKey("location_update_interval")
-        private val LOCATION_UPDATE_FASTEST_INTERVAL_LEY =
+        val TOKEN_KEY = stringPreferencesKey("token")
+        val LOGGED_IN_USER_ID_KEY = longPreferencesKey("logged_in_user_id")
+        val LOCATION_UPDATE_INTERVAL_LEY = longPreferencesKey("location_update_interval")
+        val LOCATION_UPDATE_FASTEST_INTERVAL_LEY =
             longPreferencesKey("location_update_fastest_interval")
+        val POLYLINE_WIDTH_KEY = floatPreferencesKey("polyline_width")
+        val POLYLINE_COLOR_KEY = intPreferencesKey("polyline_color")
     }
 
     private val datastore = context.datastore
 
     /**
-     * Get the token value from preferences.
-     * If no token is present then returns a Flow of null.
+     * Get the value from datastore.
+     *
+     * @param key Key to use for querying the value from the datastore.
+     * @param default Default value to use in case it is not present in the datastore.
      */
-    val token: Flow<String?> = datastore.data
+    fun <T> getValue(key: Preferences.Key<T>, default: T?): Flow<T?> = datastore.data
         .catch { exception ->
             if (exception is IOException) {
                 emit(emptyPreferences())
@@ -43,93 +46,15 @@ class SettingsManager @Inject constructor(@ApplicationContext context: Context) 
             }
         }
         .map { preferences ->
-            preferences[TOKEN_KEY]
+            preferences[key] ?: default
         }
 
     /**
-     * Save the new given token to the preferences.
+     * Associate a new value with the given key.
      */
-    suspend fun saveToken(token: String) {
+    suspend fun <T> setValue(key: Preferences.Key<T>, value: T) {
         datastore.edit { preferences ->
-            preferences[TOKEN_KEY] = token
-        }
-    }
-
-    /**
-     * Get the id of the current logged in user.
-     * Can return Flow of null if there is no logged in user.
-     */
-    val loggedInUser: Flow<Long?> = datastore.data
-        .catch { exception ->
-            if (exception is IOException) {
-                emit(emptyPreferences())
-            } else {
-                throw exception
-            }
-        }
-        .map { preferences ->
-            preferences[LOGGED_IN_USER_ID_KEY]
-        }
-
-    /**
-     * Save the id of the currently logged in user.
-     */
-    suspend fun saveLoggedInUser(id: Long) {
-        datastore.edit { preferences ->
-            preferences[LOGGED_IN_USER_ID_KEY] = id
-        }
-    }
-
-    /**
-     * Get the interval of the location request updates.
-     * If there is no interval stored in datastore, returns the
-     * [C.DEFAULT_LOCATION_UPDATE_INTERVAL].
-     */
-    val locationUpdateInterval: Flow<Long> = datastore.data
-        .catch { exception ->
-            if (exception is IOException) {
-                emit(emptyPreferences())
-            } else {
-                throw exception
-            }
-        }
-        .map { preferences ->
-            preferences[LOCATION_UPDATE_INTERVAL_LEY] ?: C.DEFAULT_LOCATION_UPDATE_INTERVAL
-        }
-
-    /**
-     * Save the given interval of the location request updates.
-     */
-    suspend fun saveLocationUpdateInterval(interval: Long) {
-        datastore.edit { preferences ->
-            preferences[LOCATION_UPDATE_INTERVAL_LEY] = interval
-        }
-    }
-
-    /**
-     * Get the fastest interval of the location request updates.
-     * If there is no fastest interval saved in datastore, returns the
-     * [C.DEFAULT_LOCATION_UPDATE_FASTEST_INTERVAL].
-     */
-    val locationUpdateFastestInterval: Flow<Long> = datastore.data
-        .catch { exception ->
-            if (exception is IOException) {
-                emit(emptyPreferences())
-            } else {
-                throw exception
-            }
-        }
-        .map { preferences ->
-            preferences[LOCATION_UPDATE_FASTEST_INTERVAL_LEY]
-                ?: C.DEFAULT_LOCATION_UPDATE_FASTEST_INTERVAL
-        }
-
-    /**
-     * Save the given interval of the location request updates.
-     */
-    suspend fun saveLocationUpdateFastestInterval(fastestInterval: Long) {
-        datastore.edit { preferences ->
-            preferences[LOCATION_UPDATE_INTERVAL_LEY] = fastestInterval
+            preferences[key] = value
         }
     }
 }

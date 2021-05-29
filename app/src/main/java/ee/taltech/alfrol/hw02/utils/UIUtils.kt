@@ -1,13 +1,13 @@
 package ee.taltech.alfrol.hw02.utils
 
 import android.content.Context
-import android.location.Location
 import android.text.Editable
 import android.text.TextWatcher
 import android.widget.Toast
+import androidx.annotation.ColorRes
 import androidx.annotation.StringRes
-import com.google.android.gms.location.LocationRequest
-import com.google.android.gms.maps.model.LatLng
+import androidx.core.content.ContextCompat
+import com.google.android.gms.maps.model.PolylineOptions
 import ee.taltech.alfrol.hw02.R
 import java.time.Instant
 import java.time.OffsetDateTime
@@ -50,6 +50,19 @@ object UIUtils {
     }
 
     /**
+     * Construct a [PolylineOptions] with the given presets.
+     *
+     * @param context Context to use for color extraction.
+     * @param color Color to apply.
+     * @param width Width to apply.
+     */
+    fun getPolylineOptions(context: Context, @ColorRes color: Int, width: Float) =
+        PolylineOptions().apply {
+            color(ContextCompat.getColor(context, color))
+            width(width)
+        }
+
+    /**
      * Get the correct formatted string for the given distance value.
      *
      * @param context The context to use for requesting a string resource.
@@ -84,31 +97,6 @@ object UIUtils {
             else -> context.getString(R.string.duration, hours, minutes, seconds)
         }
     }
-
-    /**
-     * Calculate the distance between two points.
-     *
-     * @param first Point one.
-     * @param second Point two.
-     * @return Distance between two points in meters.
-     */
-    fun calculateDistance(first: Location, second: Location): Float {
-        val result = FloatArray(1)
-        Location.distanceBetween(
-            first.latitude,
-            first.longitude,
-            second.latitude,
-            second.longitude,
-            result
-        )
-        return result[0]
-    }
-
-    /**
-     * Map the list of [Location] objects to list of [LatLng] objects.
-     */
-    fun mapLocationToLatLng(location: List<Location>): MutableList<LatLng> =
-        location.map { LatLng(it.latitude, it.longitude) }.toMutableList()
 
     /**
      * Calculate the pace.
