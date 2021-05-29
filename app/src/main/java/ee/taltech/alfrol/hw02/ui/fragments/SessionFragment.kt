@@ -4,12 +4,14 @@ import android.annotation.SuppressLint
 import android.content.Intent
 import android.location.Location
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.Animation
 import android.view.animation.AnimationUtils
 import android.view.animation.RotateAnimation
+import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
@@ -28,6 +30,7 @@ import ee.taltech.alfrol.hw02.R
 import ee.taltech.alfrol.hw02.data.SettingsManager
 import ee.taltech.alfrol.hw02.databinding.FragmentSessionBinding
 import ee.taltech.alfrol.hw02.service.LocationService
+import ee.taltech.alfrol.hw02.service.StopwatchService
 import ee.taltech.alfrol.hw02.ui.states.CompassState
 import ee.taltech.alfrol.hw02.ui.states.PolylineState
 import ee.taltech.alfrol.hw02.ui.viewmodels.SessionViewModel
@@ -248,7 +251,8 @@ class SessionFragment : Fragment(R.layout.fragment_session),
     }
 
     /**
-     * Start observing the livedata changes from the [LocationService] and [SessionViewModel].
+     * Start observing the livedata changes from the
+     * [LocationService], [StopwatchService] and [SessionViewModel].
      */
     private fun startObserving() {
         LocationService.isTracking.observe(viewLifecycleOwner, isTrackingObserver)
@@ -259,6 +263,16 @@ class SessionFragment : Fragment(R.layout.fragment_session),
         })
         LocationService.currentLocation.observe(viewLifecycleOwner, {
             it?.let { loc -> navigateToCurrentLocation(loc) }
+        })
+
+        StopwatchService.total.observe(viewLifecycleOwner, {
+            updateDuration(binding.totalDuration, it)
+        })
+        StopwatchService.checkpoint.observe(viewLifecycleOwner, {
+            updateDuration(binding.checkpointDuration, it)
+        })
+        StopwatchService.waypoint.observe(viewLifecycleOwner, {
+            updateDuration(binding.waypointDuration, it)
         })
 
         sessionViewModel.polylineState.observe(viewLifecycleOwner, {
@@ -281,11 +295,22 @@ class SessionFragment : Fragment(R.layout.fragment_session),
         }
 
     /**
+     * Start the [StopwatchService] with the given action.
+     *
+     * @param action Action to set in the intent.
+     */
+    private fun startStopwatchService(action: String) =
+        Intent(requireContext(), StopwatchService::class.java).apply {
+            this.action = action
+            requireContext().startService(this)
+        }
+
+    /**
      * Send the broadcast with the given action.
      *
      * @param action Action to use in the broadcast intent.
      */
-    private fun sendLocationActionBroadcast(action: String) =
+    private fun sendBroadcast(action: String) =
         LocalBroadcastManager.getInstance(requireContext()).sendBroadcast(Intent(action))
 
     /**
@@ -294,9 +319,11 @@ class SessionFragment : Fragment(R.layout.fragment_session),
     private val onClickSessionStart = View.OnClickListener {
         if (isTracking) {
             startLocationService(C.ACTION_STOP_SERVICE)
+            startStopwatchService(C.ACTION_STOP_SERVICE)
         } else {
             if (PermissionUtils.hasLocationPermission(requireContext())) {
                 startLocationService(C.ACTION_START_SERVICE)
+                startStopwatchService(C.ACTION_START_SERVICE)
             } else {
                 PermissionUtils.requestLocationPermission(this)
             }
@@ -338,7 +365,8 @@ class SessionFragment : Fragment(R.layout.fragment_session),
      */
     private val onClickAddCheckpoint = View.OnClickListener {
         if (isTracking) {
-            sendLocationActionBroadcast(C.ACTION_ADD_CHECKPOINT)
+            sendBroadcast(C.ACTION_ADD_CHECKPOINT)
+            sendBroadcast(C.ACTION_START_CHECKPOINT_STOPWATCH)
         }
     }
 
@@ -347,7 +375,8 @@ class SessionFragment : Fragment(R.layout.fragment_session),
      */
     private val onClickAddWaypoint = View.OnClickListener {
         if (isTracking) {
-            sendLocationActionBroadcast(C.ACTION_ADD_WAYPOINT)
+            sendBroadcast(C.ACTION_ADD_WAYPOINT)
+            sendBroadcast(C.ACTION_START_WAYPOINT_STOPWATCH)
         }
     }
 
@@ -382,6 +411,16 @@ class SessionFragment : Fragment(R.layout.fragment_session),
         if (checkpoints.isNotEmpty()) {
             sessionViewModel.saveLocationPoint(checkpoints.last(), C.CP_TYPE_ID)
         }
+    }
+
+    /**
+     * Update the duration of the given field.
+     *
+     * @param which TextView to update duration for.
+     * @param ms Duration in milliseconds.
+     */
+    private fun updateDuration(which: TextView, ms: Long) = which.apply {
+        text = UIUtils.formatDuration(requireContext(), ms)
     }
 
     /**

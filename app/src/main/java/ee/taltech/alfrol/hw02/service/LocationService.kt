@@ -45,7 +45,7 @@ class LocationService : LifecycleService() {
 
     private lateinit var fusedLocationProviderClient: FusedLocationProviderClient
 
-    private val intentFilter = IntentFilter(C.ACTION_LOCATION_ACTION).apply {
+    private val intentFilter = IntentFilter().apply {
         addAction(C.ACTION_ADD_CHECKPOINT)
         addAction(C.ACTION_ADD_WAYPOINT)
     }
