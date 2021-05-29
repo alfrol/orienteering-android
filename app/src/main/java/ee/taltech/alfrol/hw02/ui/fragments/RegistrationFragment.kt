@@ -11,7 +11,7 @@ import androidx.navigation.fragment.findNavController
 import dagger.hilt.android.AndroidEntryPoint
 import ee.taltech.alfrol.hw02.R
 import ee.taltech.alfrol.hw02.databinding.FragmentRegistrationBinding
-import ee.taltech.alfrol.hw02.ui.utils.UIUtils
+import ee.taltech.alfrol.hw02.utils.UIUtils
 import ee.taltech.alfrol.hw02.ui.viewmodels.RegistrationViewModel
 
 @AndroidEntryPoint

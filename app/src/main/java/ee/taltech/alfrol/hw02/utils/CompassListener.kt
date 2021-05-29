@@ -1,4 +1,4 @@
-package ee.taltech.alfrol.hw02.ui.utils
+package ee.taltech.alfrol.hw02.utils
 
 import android.content.Context
 import android.hardware.Sensor

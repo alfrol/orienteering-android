@@ -13,7 +13,7 @@ import ee.taltech.alfrol.hw02.C
 import ee.taltech.alfrol.hw02.R
 import ee.taltech.alfrol.hw02.data.SettingsManager
 import ee.taltech.alfrol.hw02.databinding.FragmentMenuBinding
-import ee.taltech.alfrol.hw02.ui.utils.UIUtils
+import ee.taltech.alfrol.hw02.utils.UIUtils
 import ee.taltech.alfrol.hw02.ui.viewmodels.SessionViewModel
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject

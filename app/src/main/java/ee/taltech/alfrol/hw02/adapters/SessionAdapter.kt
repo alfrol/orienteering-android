@@ -9,7 +9,7 @@ import androidx.recyclerview.widget.RecyclerView
 import ee.taltech.alfrol.hw02.R
 import ee.taltech.alfrol.hw02.data.model.Session
 import ee.taltech.alfrol.hw02.databinding.HistoryItemBinding
-import ee.taltech.alfrol.hw02.ui.utils.UIUtils
+import ee.taltech.alfrol.hw02.utils.UIUtils
 
 class SessionAdapter(
     private val context: Context,

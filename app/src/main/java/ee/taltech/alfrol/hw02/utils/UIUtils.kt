@@ -1,6 +1,5 @@
-package ee.taltech.alfrol.hw02.ui.utils
+package ee.taltech.alfrol.hw02.utils
 
-import android.Manifest
 import android.content.Context
 import android.location.Location
 import android.text.Editable
@@ -10,7 +9,6 @@ import androidx.annotation.StringRes
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.maps.model.LatLng
 import ee.taltech.alfrol.hw02.R
-import pub.devrel.easypermissions.EasyPermissions
 import java.time.Instant
 import java.time.OffsetDateTime
 import java.time.ZoneId
@@ -48,23 +46,6 @@ object UIUtils {
 
             override fun afterTextChanged(s: Editable?) {
             }
-        }
-    }
-
-    /**
-     * Check whether the app has location permissions.
-     */
-    fun hasLocationPermission(context: Context) =
-        EasyPermissions.hasPermissions(context, Manifest.permission.ACCESS_FINE_LOCATION)
-
-    /**
-     * Construct a new [LocationRequest].
-     */
-    fun getLocationRequest(interval: Long, fastestInterval: Long): LocationRequest {
-        return LocationRequest.create().apply {
-            this.interval = interval
-            this.fastestInterval = fastestInterval
-            priority = LocationRequest.PRIORITY_HIGH_ACCURACY
         }
     }
 

@@ -20,6 +20,7 @@
     <string name="text_new_session">Start a new training session</string>
     <string name="text_sessions">See and edit your previous sessions</string>
     <string name="text_location_permission_rationale">This application requires location access</string>
+    <string name="text_storage_write_permission_rationale">This application requires storage write access</string>
     <string name="text_distance">Distance</string>
     <string name="text_duration">Duration</string>
     <string name="text_pace">Pace</string>

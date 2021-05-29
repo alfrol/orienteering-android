@@ -1,5 +1,8 @@
 package ee.taltech.alfrol.hw02.ui.fragments
 
+import android.annotation.SuppressLint
+import android.content.Intent
+import android.location.Location
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -9,27 +12,45 @@ import android.view.animation.AnimationUtils
 import android.view.animation.RotateAnimation
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.viewModels
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.navArgs
+import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.model.*
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import dagger.hilt.android.AndroidEntryPoint
+import ee.taltech.alfrol.hw02.C
 import ee.taltech.alfrol.hw02.R
+import ee.taltech.alfrol.hw02.data.SettingsManager
 import ee.taltech.alfrol.hw02.databinding.FragmentSessionBinding
-import ee.taltech.alfrol.hw02.ui.utils.CompassListener
+import ee.taltech.alfrol.hw02.service.LocationService
+import ee.taltech.alfrol.hw02.ui.states.CompassState
+import ee.taltech.alfrol.hw02.ui.viewmodels.SessionViewModel
+import ee.taltech.alfrol.hw02.utils.CompassListener
+import ee.taltech.alfrol.hw02.utils.PermissionUtils
+import kotlinx.coroutines.delay
+import pub.devrel.easypermissions.AppSettingsDialog
+import pub.devrel.easypermissions.EasyPermissions
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class SessionFragment : Fragment(R.layout.fragment_session),
     OnMapReadyCallback,
     GoogleMap.OnMapClickListener,
+    EasyPermissions.PermissionCallbacks,
     GoogleMap.OnCameraMoveStartedListener,
     CompassListener.OnCompassUpdateCallback {
+
+    @Inject
+    lateinit var settingsManager: SettingsManager
 
     private var _binding: FragmentSessionBinding? = null
     private val binding get() = _binding!!
 
     private val args: SessionFragmentArgs by navArgs()
+    private val sessionViewModel: SessionViewModel by viewModels()
 
     private val openSettings: Animation by lazy {
         AnimationUtils.loadAnimation(requireContext(), R.anim.settings_button_open)
@@ -48,8 +69,10 @@ class SessionFragment : Fragment(R.layout.fragment_session),
     private lateinit var bottomSheetBehavior: BottomSheetBehavior<View>
 
     private var isViewMode = false
+    private var isTracking = false
     private var isFollowingDevice = true
     private var currentCompassAngle = 0.0f
+    private var isCompassEnabled = false
     private var areSettingsOpen = false
     private var map: GoogleMap? = null
 
@@ -77,9 +100,13 @@ class SessionFragment : Fragment(R.layout.fragment_session),
 
             fabSessionStart.setOnClickListener(onClickSessionStart)
             fabSettings.setOnClickListener(onClickSettings)
-            fabCenterMapView.setOnClickListener(onClickCenterView)
-            fabResetMapView.setOnClickListener(onClickResetMapView)
-            fabToggleCompass.setOnClickListener(onClickToggleCompass)
+            fabCenterMapView.setOnClickListener(onClickCenterMapView)
+            fabResetMapView.setOnClickListener {
+                resetCameraRotation()
+            }
+            fabToggleCompass.setOnClickListener {
+                sessionViewModel.toggleCompass()
+            }
             fabAddCheckpoint.setOnClickListener(onClickAddCheckpoint)
             fabAddWaypoint.setOnClickListener(onClickAddWaypoint)
 
@@ -87,11 +114,16 @@ class SessionFragment : Fragment(R.layout.fragment_session),
             bottomSheetBehavior = BottomSheetBehavior.from(sessionData)
             bottomSheetBehavior.state = BottomSheetBehavior.STATE_COLLAPSED
         }
+        startObserving()
     }
 
     override fun onResume() {
         super.onResume()
         binding.mapView.onResume()
+
+        if (isCompassEnabled) {
+            compassListener.startListening()
+        }
     }
 
     override fun onStart() {
@@ -99,6 +131,28 @@ class SessionFragment : Fragment(R.layout.fragment_session),
         binding.mapView.onStart()
     }
 
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        EasyPermissions.onRequestPermissionsResult(requestCode, permissions, grantResults)
+    }
+
+    override fun onPermissionsGranted(requestCode: Int, perms: MutableList<String>) {
+        // Ignore
+    }
+
+    override fun onPermissionsDenied(requestCode: Int, perms: MutableList<String>) {
+        if (EasyPermissions.somePermissionPermanentlyDenied(this, perms)) {
+            AppSettingsDialog.Builder(this).build()
+        } else {
+            PermissionUtils.requestLocationPermission(this)
+        }
+    }
+
+    @SuppressLint("MissingPermission")
     override fun onMapReady(googleMap: GoogleMap) {
         map = googleMap
 
@@ -106,6 +160,15 @@ class SessionFragment : Fragment(R.layout.fragment_session),
         if (!isViewMode) {
             map?.setOnMapClickListener(this)
             map?.setOnCameraMoveStartedListener(this)
+
+            if (PermissionUtils.hasLocationPermission(requireContext())) {
+                map?.isMyLocationEnabled = true
+                // When map is ready wait for 1 second and navigate to the current location
+                lifecycleScope.launchWhenCreated {
+                    delay(1000L)
+                    startLocationService(C.ACTION_GET_CURRENT_LOCATION)
+                }
+            }
         }
 
         with(map?.uiSettings) {
@@ -149,6 +212,10 @@ class SessionFragment : Fragment(R.layout.fragment_session),
     override fun onPause() {
         super.onPause()
         binding.mapView.onPause()
+
+        if (isCompassEnabled) {
+            compassListener.stopListening()
+        }
     }
 
     override fun onStop() {
@@ -167,11 +234,51 @@ class SessionFragment : Fragment(R.layout.fragment_session),
         _binding = null
     }
 
+    private fun startObserving() {
+        LocationService.isTracking.observe(viewLifecycleOwner, {
+            isTracking = it ?: false
+            setSessionButtonStyle()
+        })
+        LocationService.pathPoints.observe(viewLifecycleOwner, {
+
+        })
+        LocationService.currentLocation.observe(viewLifecycleOwner, {
+            it?.let { loc ->
+                navigateToCurrentLocation(loc)
+            }
+        })
+
+        sessionViewModel.compassState.observe(viewLifecycleOwner, {
+            it?.let { compassState ->
+                toggleCompass(compassState)
+            }
+        })
+    }
+
+    /**
+     * Start the [LocationService] with the given action.
+     *
+     * @param action Action to set in the intent.
+     */
+    private fun startLocationService(action: String) =
+        Intent(requireContext(), LocationService::class.java).apply {
+            this.action = action
+            requireContext().startService(this)
+        }
+
     /**
      * Listener for session start/stop button.
      */
     private val onClickSessionStart = View.OnClickListener {
-
+        if (isTracking) {
+            startLocationService(C.ACTION_STOP_SERVICE)
+        } else {
+            if (PermissionUtils.hasLocationPermission(requireContext())) {
+                startLocationService(C.ACTION_START_SERVICE)
+            } else {
+                PermissionUtils.requestLocationPermission(this)
+            }
+        }
     }
 
     /**
@@ -196,20 +303,12 @@ class SessionFragment : Fragment(R.layout.fragment_session),
     /**
      * Listener for center view button.
      */
-    private val onClickCenterView = View.OnClickListener {
-
-    }
-
-    /**
-     * Listener for reset map view button.
-     */
-    private val onClickResetMapView = View.OnClickListener {
-    }
-
-    /**
-     * Listener for compass button.
-     */
-    private val onClickToggleCompass = View.OnClickListener {
+    private val onClickCenterMapView = View.OnClickListener {
+        if (PermissionUtils.hasLocationPermission(requireContext())) {
+            startLocationService(C.ACTION_GET_CURRENT_LOCATION)
+        } else {
+            PermissionUtils.requestLocationPermission(this)
+        }
     }
 
     /**
@@ -225,6 +324,58 @@ class SessionFragment : Fragment(R.layout.fragment_session),
     private val onClickAddWaypoint = View.OnClickListener {
 
     }
+
+    /**
+     * Navigate the camera to the current device location.
+     */
+    private fun navigateToCurrentLocation(location: Location) {
+        val latLng = LatLng(location.latitude, location.longitude)
+        map?.animateCamera(
+            CameraUpdateFactory.newLatLngZoom(latLng, C.DEFAULT_MAP_ZOOM),
+            C.DEFAULT_MAP_CAMERA_ANIMATION_DURATION,
+            null
+        )
+    }
+
+    /**
+     * Reset the camera rotation to point to the north.
+     */
+    private fun resetCameraRotation() {
+        map?.let { m ->
+            val target = m.cameraPosition.target
+            val zoom = m.cameraPosition.zoom
+            val tilt = m.cameraPosition.tilt
+            val bearing = 0.0f
+
+            m.animateCamera(
+                CameraUpdateFactory.newCameraPosition(CameraPosition(target, zoom, tilt, bearing))
+            )
+        }
+    }
+
+    /**
+     * Set the style of the session button depending on the [isTracking] state.
+     */
+    private fun setSessionButtonStyle() =
+        with(binding) {
+            val color: Int
+            val icon: Int
+
+            when (isTracking) {
+                true -> {
+                    color = R.color.red
+                    icon = R.drawable.ic_stop
+                }
+                false -> {
+                    color = R.color.secondary
+                    icon = R.drawable.ic_start
+                }
+            }
+
+            fabSessionStart.backgroundTintList =
+                ContextCompat.getColorStateList(requireContext(), color)
+            fabSessionStart.setImageResource(icon)
+        }
 
     /**
      * Set the visibility of settings buttons.
@@ -250,6 +401,28 @@ class SessionFragment : Fragment(R.layout.fragment_session),
             fabCenterMapView.startAnimation(animation)
             fabResetMapView.startAnimation(animation)
             fabToggleCompass.startAnimation(animation)
+        }
+    }
+
+    /**
+     * Start or stop listening to compass updates depending on the state.
+     */
+    private fun toggleCompass(compassState: CompassState) {
+        with(binding) {
+            isCompassEnabled = compassState.isEnabled
+            fabToggleCompass.setImageResource(compassState.compassButtonIcon)
+            imageViewCompass.clearAnimation()
+
+            when (compassState.isEnabled) {
+                true -> {
+                    imageViewCompass.visibility = View.VISIBLE
+                    compassListener.startListening()
+                }
+                false -> {
+                    imageViewCompass.visibility = View.GONE
+                    compassListener.stopListening()
+                }
+            }
         }
     }
 
