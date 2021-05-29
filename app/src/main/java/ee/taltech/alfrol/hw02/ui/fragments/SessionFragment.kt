@@ -13,6 +13,7 @@ import android.view.animation.RotateAnimation
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.Observer
 import androidx.lifecycle.lifecycleScope
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import androidx.navigation.fragment.navArgs
@@ -28,6 +29,7 @@ import ee.taltech.alfrol.hw02.data.SettingsManager
 import ee.taltech.alfrol.hw02.databinding.FragmentSessionBinding
 import ee.taltech.alfrol.hw02.service.LocationService
 import ee.taltech.alfrol.hw02.ui.states.CompassState
+import ee.taltech.alfrol.hw02.ui.states.PolylineState
 import ee.taltech.alfrol.hw02.ui.viewmodels.SessionViewModel
 import ee.taltech.alfrol.hw02.utils.CompassListener
 import ee.taltech.alfrol.hw02.utils.LocationUtils
@@ -79,8 +81,7 @@ class SessionFragment : Fragment(R.layout.fragment_session),
     private var areSettingsOpen = false
 
     private var map: GoogleMap? = null
-    private var polylineColor = C.DEFAULT_POLYLINE_COLOR
-    private var polylineWidth = C.DEFAULT_POLYLINE_WIDTH
+    private var polylineState = PolylineState(C.DEFAULT_POLYLINE_COLOR, C.DEFAULT_POLYLINE_WIDTH)
     private var waypointMarker: Marker? = null
 
     private var pathPoints: MutableList<Location> = mutableListOf()
@@ -250,33 +251,21 @@ class SessionFragment : Fragment(R.layout.fragment_session),
      * Start observing the livedata changes from the [LocationService] and [SessionViewModel].
      */
     private fun startObserving() {
-        LocationService.isTracking.observe(viewLifecycleOwner, {
-            isTracking = it ?: false
-            setSessionButtonStyle()
-            setLocationActionButtonsVisibility()
-        })
-        LocationService.pathPoints.observe(viewLifecycleOwner, {
-            pathPoints = it ?: mutableListOf()
-            addLastPathPoint()
-        })
-        LocationService.checkpoints.observe(viewLifecycleOwner, {
-            checkpoints = it ?: mutableListOf()
-            addLastCheckpoint()
-        })
+        LocationService.isTracking.observe(viewLifecycleOwner, isTrackingObserver)
+        LocationService.pathPoints.observe(viewLifecycleOwner, pathPointsObserver)
+        LocationService.checkpoints.observe(viewLifecycleOwner, checkpointsObserver)
         LocationService.waypoint.observe(viewLifecycleOwner, {
-            waypoint = it
-            addWaypoint()
+            waypoint = it?.also { addWaypoint() }
         })
         LocationService.currentLocation.observe(viewLifecycleOwner, {
-            it?.let { loc ->
-                navigateToCurrentLocation(loc)
-            }
+            it?.let { loc -> navigateToCurrentLocation(loc) }
         })
 
+        sessionViewModel.polylineState.observe(viewLifecycleOwner, {
+            polylineState = it?.also { addAllPathPoints() } ?: polylineState
+        })
         sessionViewModel.compassState.observe(viewLifecycleOwner, {
-            it?.let { compassState ->
-                toggleCompass(compassState)
-            }
+            it?.let { compassState -> toggleCompass(compassState) }
         })
     }
 
@@ -363,6 +352,39 @@ class SessionFragment : Fragment(R.layout.fragment_session),
     }
 
     /**
+     * Observer for [LocationService.isTracking].
+     */
+    private val isTrackingObserver = Observer<Boolean> {
+        isTracking = it ?: false
+        setSessionButtonStyle()
+        setLocationActionButtonsVisibility()
+    }
+
+    /**
+     * Observer for [LocationService.pathPoints].
+     */
+    private val pathPointsObserver = Observer<MutableList<Location>> {
+        pathPoints = it ?: mutableListOf()
+        addLastPathPoint()
+
+        if (pathPoints.isNotEmpty()) {
+            sessionViewModel.saveLocationPoint(pathPoints.last(), C.LOC_TYPE_ID)
+        }
+    }
+
+    /**
+     * Observer for [LocationService.checkpoints].
+     */
+    private val checkpointsObserver = Observer<MutableList<Location>> {
+        checkpoints = it ?: mutableListOf()
+        addLastCheckpoint()
+
+        if (checkpoints.isNotEmpty()) {
+            sessionViewModel.saveLocationPoint(checkpoints.last(), C.CP_TYPE_ID)
+        }
+    }
+
+    /**
      * Add the last point from the path points to the map.
      */
     private fun addLastPathPoint() {
@@ -376,7 +398,7 @@ class SessionFragment : Fragment(R.layout.fragment_session),
         val latLngPreLast = LatLng(preLastPathPoint.latitude, preLastPathPoint.longitude)
 
         val polylineOptions =
-            UIUtils.getPolylineOptions(requireContext(), polylineColor, polylineWidth)
+            UIUtils.getPolylineOptions(requireContext(), polylineState.color, polylineState.width)
         polylineOptions.add(latLngPreLast).add(latLngLast)
         map?.addPolyline(polylineOptions)
 
@@ -395,7 +417,7 @@ class SessionFragment : Fragment(R.layout.fragment_session),
         }
 
         val polylineOptions =
-            UIUtils.getPolylineOptions(requireContext(), polylineColor, polylineWidth)
+            UIUtils.getPolylineOptions(requireContext(), polylineState.color, polylineState.width)
         polylineOptions.addAll(LocationUtils.mapLocationToLatLng(pathPoints))
         map?.addPolyline(polylineOptions)
 

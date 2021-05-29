@@ -11,6 +11,7 @@ import ee.taltech.alfrol.hw02.data.model.Session
 import ee.taltech.alfrol.hw02.data.repositories.LocationPointRepository
 import ee.taltech.alfrol.hw02.data.repositories.SessionRepository
 import ee.taltech.alfrol.hw02.ui.states.CompassState
+import ee.taltech.alfrol.hw02.ui.states.PolylineState
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -46,11 +47,8 @@ class SessionViewModel @Inject constructor(
     val averagePace: LiveData<Float> =
         sessionRepository.getAveragePace().asLiveData()
 
-    private var _polylineColor = MutableLiveData<Int>()
-    val polylineColor: LiveData<Int> = _polylineColor
-
-    private var _polylineWidth = MutableLiveData<Float>()
-    val polylineWidth: LiveData<Float> = _polylineWidth
+    private var _polylineState = MutableLiveData<PolylineState>()
+    val polylineState: LiveData<PolylineState> = _polylineState
 
     private var _compassState = MutableLiveData<CompassState>()
     val compassState: LiveData<CompassState> = _compassState
@@ -66,8 +64,7 @@ class SessionViewModel @Inject constructor(
                 C.DEFAULT_POLYLINE_WIDTH
             ).first()
 
-            _polylineColor.postValue(color!!)
-            _polylineWidth.postValue(width!!)
+            _polylineState.postValue(PolylineState(color!!, width!!))
         }
     }
 
@@ -101,8 +98,7 @@ class SessionViewModel @Inject constructor(
             settingsManager.setValue(SettingsManager.POLYLINE_WIDTH_KEY, width)
         }
 
-        _polylineColor.postValue(color)
-        _polylineWidth.postValue(width)
+        _polylineState.postValue(PolylineState(color, width))
     }
 
     /**
@@ -118,5 +114,13 @@ class SessionViewModel @Inject constructor(
                 )
             }
         } ?: CompassState(isEnabled = true, compassButtonIcon = R.drawable.ic_compass_off)
+    }
+
+    private fun saveLocationToDb() {
+
+    }
+
+    private fun saveLocationToBackend() {
+
     }
 }
