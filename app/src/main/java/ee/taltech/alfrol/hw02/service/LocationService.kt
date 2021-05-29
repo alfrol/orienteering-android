@@ -1,6 +1,7 @@
 package ee.taltech.alfrol.hw02.service
 
 import android.annotation.SuppressLint
+import android.app.NotificationManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -9,6 +10,7 @@ import android.location.Location
 import android.os.Looper
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.Observer
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
@@ -21,6 +23,7 @@ import ee.taltech.alfrol.hw02.utils.LocationUtils
 import ee.taltech.alfrol.hw02.utils.PermissionUtils
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -33,6 +36,16 @@ class LocationService : LifecycleService() {
         val checkpoints = MutableLiveData<MutableList<Location>>()
         val waypoint = MutableLiveData<Location?>()
 
+        val totalDistance = MutableLiveData<Float>()
+        val totalAveragePace = MutableLiveData<Float>()
+
+        val checkpointDistance = MutableLiveData<Float>()
+        val checkpointAveragePace = MutableLiveData<Float>()
+
+        val waypointDistance = MutableLiveData<Float>()
+        val waypointAveragePace = MutableLiveData<Float>()
+
+
         // In meters
         private const val MAX_ACCURACY = 30.0f
         private const val MAX_DISTANCE = 50.0f
@@ -44,16 +57,24 @@ class LocationService : LifecycleService() {
     lateinit var settingsManager: SettingsManager
 
     private lateinit var fusedLocationProviderClient: FusedLocationProviderClient
+    private lateinit var notificationManager: NotificationManager
+
+    private var duration = 0L
+    private var checkpointDuration = 0L
+    private var waypointDuration = 0L
+    private var lastWholeSecond = 0L
+
 
     private val intentFilter = IntentFilter().apply {
         addAction(C.ACTION_ADD_CHECKPOINT)
         addAction(C.ACTION_ADD_WAYPOINT)
     }
-    private val notificationBroadcastReceiver = LocationActionReceiver()
+    private val locationActionReceiver = LocationActionReceiver()
 
     override fun onCreate() {
         super.onCreate()
         fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this)
+        notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -82,16 +103,66 @@ class LocationService : LifecycleService() {
         pathPoints.postValue(mutableListOf())
         checkpoints.postValue(mutableListOf())
         waypoint.postValue(null)
+
+        totalDistance.postValue(0.0f)
+        totalAveragePace.postValue(0.0f)
+        duration = 0L
+        lastWholeSecond = 0L
+
+        checkpointDistance.postValue(0.0f)
+        checkpointAveragePace.postValue(0.0f)
+        checkpointDuration = 0L
+
+        waypointDistance.postValue(0.0f)
+        waypointAveragePace.postValue(0.0f)
+        waypointDuration = 0L
     }
+
+    /**
+     * Start observing for [StopwatchService] to get the durations for calculations.
+     */
+    private fun startObserving() {
+        StopwatchService.total.observe(this, stopwatchObserver)
+        StopwatchService.checkpoint.observe(this, {
+            waypointDuration = it ?: 0L
+        })
+        StopwatchService.waypoint.observe(this, {
+            checkpointDuration = it ?: 0L
+        })
+    }
+
+    /**
+     * Observer for changes in the total duration.
+     * Updates the notification with the new duration,
+     * but does that only each second.
+     */
+    private val stopwatchObserver = Observer<Long> {
+        if (it >= lastWholeSecond + TimeUnit.SECONDS.toMillis(1)) {
+            lastWholeSecond = it
+            val notificationText = LocationUtils.getNotificationText(
+                this,
+                lastWholeSecond,
+                totalDistance.value ?: 0.0f,
+                totalAveragePace.value ?: 0.0f
+            )
+            val notification = LocationUtils.createNotification(this, notificationText)
+            notificationManager.notify(C.NOTIFICATION_ID, notification)
+        }
+
+        // Save for calculating the pace
+        duration = it
+    }
+
 
     /**
      * Start tracking the device location.
      */
     private fun startTracking() {
         isTracking.postValue(true)
+        startObserving()
         requestLocationUpdates()
         registerLocationActionReceiver()
-        startForeground(C.NOTIFICATION_ID, LocationUtils.createNotification(this, ""))
+        startForeground(C.NOTIFICATION_ID, LocationUtils.createNotification(this))
     }
 
     /**
@@ -109,18 +180,18 @@ class LocationService : LifecycleService() {
      * Register the [LocationActionReceiver] for both outside and local broadcasts.
      */
     private fun registerLocationActionReceiver() {
-        registerReceiver(notificationBroadcastReceiver, intentFilter)
+        registerReceiver(locationActionReceiver, intentFilter)
         LocalBroadcastManager.getInstance(this)
-            .registerReceiver(notificationBroadcastReceiver, intentFilter)
+            .registerReceiver(locationActionReceiver, intentFilter)
     }
 
     /**
      * Unregister the [LocationActionReceiver] from both outside and local broadcasts.
      */
     private fun unregisterLocationActionReceiver() {
-        unregisterReceiver(notificationBroadcastReceiver)
+        unregisterReceiver(locationActionReceiver)
         LocalBroadcastManager.getInstance(this)
-            .unregisterReceiver(notificationBroadcastReceiver)
+            .unregisterReceiver(locationActionReceiver)
     }
 
     /**
@@ -204,6 +275,7 @@ class LocationService : LifecycleService() {
             }
 
             addPoint(pathPoints, location)
+            updateData()
         }
     }
 
@@ -219,6 +291,86 @@ class LocationService : LifecycleService() {
             points.postValue(this)
         } ?: points.postValue(mutableListOf(location))
     }
+
+    /**
+     * Update all distances and pace values.
+     */
+    private fun updateData() {
+        updateDistance()
+        updatePace()
+
+        updateCheckpointDistance()
+        updateCheckpointPace()
+
+        updateWaypointDistance()
+        updateWaypointPace()
+    }
+
+    /**
+     * Update the total tracked distance.
+     */
+    private fun updateDistance() = pathPoints.value?.let {
+        if (it.size < 2) {
+            return@let
+        }
+
+        val last = it.last()
+        val preLast = it[it.lastIndex - 1]
+        val distance = LocationUtils.calculateDistance(last, preLast)
+
+        totalDistance.value = totalDistance.value?.plus(distance) ?: 0.0f
+    }
+
+    /**
+     * Update the average pace.
+     */
+    private fun updatePace() = totalDistance.value?.let {
+        totalAveragePace.value = LocationUtils.calculatePace(duration, it)
+    }
+
+    /**
+     * Update distance from the last checkpoint.
+     */
+    private fun updateCheckpointDistance() = checkpoints.value?.let { ckpts ->
+        pathPoints.value?.let { points ->
+            if (ckpts.isNotEmpty() && points.isNotEmpty()) {
+                val lastPoint = points.last()
+                val lastCheckpoint = ckpts.last()
+                val distance = LocationUtils.calculateDistance(lastPoint, lastCheckpoint)
+
+                checkpointDistance.value = distance
+            }
+        }
+    }
+
+    /**
+     * Update average pace from the last checkpoint.
+     */
+    private fun updateCheckpointPace() = checkpointDistance.value?.let {
+        checkpointAveragePace.value = LocationUtils.calculatePace(checkpointDuration, it)
+    }
+
+    /**
+     * Update distance from the waypoint.
+     */
+    private fun updateWaypointDistance() = waypoint.value?.let { wp ->
+        pathPoints.value?.let { points ->
+            if (points.isNotEmpty()) {
+                val lastPoint = points.last()
+                val distance = LocationUtils.calculateDistance(lastPoint, wp)
+
+                waypointDistance.value = distance
+            }
+        }
+    }
+
+    /**
+     * Update average pace from the waypoint.
+     */
+    private fun updateWaypointPace() = waypointDistance.value?.let {
+        waypointAveragePace.value = LocationUtils.calculatePace(waypointDuration, it)
+    }
+
 
     /**
      * Broadcast receiver for the service notification actions.

@@ -99,20 +99,6 @@ object UIUtils {
     }
 
     /**
-     * Calculate the pace.
-     *
-     * pace (min/km) = duration (min) / distance (km).
-     *
-     * @param duration Duration in milliseconds.
-     * @param distance Distance in meters.
-     */
-    fun calculatePace(duration: Long, distance: Float): Float =
-        when (duration > 0L && distance > 0.0f) {
-            true -> TimeUnit.MILLISECONDS.toMinutes(duration) / (distance / 1000.0f)
-            false -> 0.0f
-        }
-
-    /**
      * Get the time in milliseconds formatted ans ISO-8601 with offset.
      *
      * @param ms Time in milliseconds to format.

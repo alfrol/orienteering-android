@@ -11,6 +11,7 @@ import com.google.android.gms.maps.model.LatLng
 import ee.taltech.alfrol.hw02.C
 import ee.taltech.alfrol.hw02.R
 import ee.taltech.alfrol.hw02.service.LocationService
+import java.util.concurrent.TimeUnit
 
 object LocationUtils {
 
@@ -28,12 +29,14 @@ object LocationUtils {
      * Create a new notification for use in [LocationService].
      *
      * @param text The text to set as notification content text.
+     * If null, the default text will be selected.
+     * @see LocationUtils.getNotificationText
      */
-    fun createNotification(context: Context, text: String) =
+    fun createNotification(context: Context, text: String? = null) =
         NotificationCompat.Builder(context, C.NOTIFICATION_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(context.getString(R.string.text_total_statistics))
-            .setContentText(text)
+            .setContentText(text ?: getNotificationText(context, 0L, 0.0f, 0.0f))
             .setContentIntent(createNotificationIntent(context))
             .addAction(
                 R.drawable.ic_checkpoint,
@@ -46,6 +49,22 @@ object LocationUtils {
                 createActionPendingIntent(context, C.ACTION_ADD_WAYPOINT)
             )
             .build()
+
+    /**
+     * Construct a notification text.
+     */
+    fun getNotificationText(
+        context: Context,
+        duration: Long,
+        distance: Float,
+        averagePace: Float
+    ): String {
+        val durationText = UIUtils.formatDuration(context, duration, false)
+        val distanceText = UIUtils.formatDistance(context, distance)
+        val paceText = context.getString(R.string.pace, averagePace)
+        return "$distanceText | $durationText | $paceText"
+    }
+
 
     /**
      * Calculate the distance between two points.
@@ -65,6 +84,20 @@ object LocationUtils {
         )
         return result[0]
     }
+
+    /**
+     * Calculate the pace.
+     *
+     * pace (min/km) = duration (min) / distance (km).
+     *
+     * @param duration Duration in milliseconds.
+     * @param distance Distance in meters.
+     */
+    fun calculatePace(duration: Long, distance: Float): Float =
+        when (duration > 0L && distance > 0.0f) {
+            true -> TimeUnit.MILLISECONDS.toMinutes(duration) / (distance / 1000.0f)
+            false -> 0.0f
+        }
 
     /**
      * Map the list of [Location] objects to list of [LatLng] objects.

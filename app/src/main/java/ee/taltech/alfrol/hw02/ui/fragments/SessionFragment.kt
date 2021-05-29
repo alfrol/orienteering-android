@@ -263,6 +263,24 @@ class SessionFragment : Fragment(R.layout.fragment_session),
         LocationService.currentLocation.observe(viewLifecycleOwner, {
             it?.let { loc -> navigateToCurrentLocation(loc) }
         })
+        LocationService.totalDistance.observe(viewLifecycleOwner, {
+            updateDistance(binding.totalDistance, it ?: 0.0f)
+        })
+        LocationService.totalAveragePace.observe(viewLifecycleOwner, {
+            updatePace(binding.totalPace, it ?: 0.0f)
+        })
+        LocationService.checkpointDistance.observe(viewLifecycleOwner, {
+            updateDistance(binding.checkpointDistance, it ?: 0.0f)
+        })
+        LocationService.checkpointAveragePace.observe(viewLifecycleOwner, {
+            updatePace(binding.checkpointPace, it ?: 0.0f)
+        })
+        LocationService.waypointDistance.observe(viewLifecycleOwner, {
+            updateDistance(binding.waypointDistance, it ?: 0.0f)
+        })
+        LocationService.waypointAveragePace.observe(viewLifecycleOwner, {
+            updatePace(binding.waypointPace, it ?: 0.0f)
+        })
 
         StopwatchService.total.observe(viewLifecycleOwner, {
             updateDuration(binding.totalDuration, it)
@@ -414,6 +432,16 @@ class SessionFragment : Fragment(R.layout.fragment_session),
     }
 
     /**
+     * Update the distance of the given field.
+     *
+     * @param which TextView to update duration for.
+     * @param distance Distance in meters.
+     */
+    private fun updateDistance(which: TextView, distance: Float) = which.apply {
+        text = UIUtils.formatDistance(requireContext(), distance)
+    }
+
+    /**
      * Update the duration of the given field.
      *
      * @param which TextView to update duration for.
@@ -421,6 +449,16 @@ class SessionFragment : Fragment(R.layout.fragment_session),
      */
     private fun updateDuration(which: TextView, ms: Long) = which.apply {
         text = UIUtils.formatDuration(requireContext(), ms)
+    }
+
+    /**
+     * Update the pace of the given field.
+     *
+     * @param which TextView to update duration for.
+     * @param pace Pace in minutes per kilometer.
+     */
+    private fun updatePace(which: TextView, pace: Float) = which.apply {
+        text = getString(R.string.pace, pace)
     }
 
     /**
