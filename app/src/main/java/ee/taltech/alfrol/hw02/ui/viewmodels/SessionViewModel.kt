@@ -38,27 +38,9 @@ class SessionViewModel @Inject constructor(
     val averagePace: LiveData<Float> =
         sessionRepository.getAveragePace().asLiveData()
 
-    private var _compassState = MutableLiveData<CompassState>()
-    val compassState: LiveData<CompassState> = _compassState
-
     fun getSessionWithLocationPoints(id: Long) =
         sessionRepository.findByIdWithLocationPoints(id).asLiveData()
 
     fun deleteSession(session: Session) =
         viewModelScope.launch { sessionRepository.deleteSession(session) }
-
-    /**
-     * Toggle the compass enabled state.
-     */
-    fun toggleCompass() {
-        _compassState.value = when (isCompassEnabled()) {
-            true -> CompassState()
-            false -> CompassState(isEnabled = true, compassButtonIcon = R.drawable.ic_compass_off)
-        }
-    }
-
-    /**
-     * Check whether the compass is in enabled state.
-     */
-    fun isCompassEnabled(): Boolean = _compassState.value?.isEnabled == true
 }
