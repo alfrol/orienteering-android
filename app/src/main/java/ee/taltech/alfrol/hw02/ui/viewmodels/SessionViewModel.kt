@@ -83,9 +83,25 @@ class SessionViewModel @Inject constructor(
 
     /**
      * Update the stopped session details in the db.
+     *
+     * @param distance Distance travelled during the session.
+     * @param duration Duration of the session in milliseconds.
+     * @param pace Average pace in minutest per kilometer.
      */
-    fun updateStoppedSession() {
+    fun updateStoppedSession(distance: Float, duration: Long, pace: Float) {
+        val session = activeSession ?: return
 
+        viewModelScope.launch {
+            val updatedSession = Session(
+                id = session.id,
+                externalId = session.externalId,
+                recordedAt = session.recordedAt,
+                distance = distance,
+                duration = duration,
+                pace = pace
+            )
+            sessionRepository.updateSession(updatedSession)
+        }
     }
 
     /**

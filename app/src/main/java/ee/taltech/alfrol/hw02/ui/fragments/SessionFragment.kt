@@ -90,6 +90,10 @@ class SessionFragment : Fragment(R.layout.fragment_session),
     private var checkpoints: MutableList<Location> = mutableListOf()
     private var waypoint: Location? = null
 
+    private var distance = 0.0f
+    private var duration = 0L
+    private var pace = 0.0f
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -257,33 +261,31 @@ class SessionFragment : Fragment(R.layout.fragment_session),
         LocationService.isTracking.observe(viewLifecycleOwner, isTrackingObserver)
         LocationService.pathPoints.observe(viewLifecycleOwner, pathPointsObserver)
         LocationService.checkpoints.observe(viewLifecycleOwner, checkpointsObserver)
-        LocationService.waypoint.observe(viewLifecycleOwner, {
-            waypoint = it?.also { addWaypoint() }
-        })
+        LocationService.waypoint.observe(viewLifecycleOwner, waypointObserver)
         LocationService.currentLocation.observe(viewLifecycleOwner, {
             it?.let { loc -> navigateToCurrentLocation(loc) }
         })
-        LocationService.totalDistance.observe(viewLifecycleOwner, {
-            updateDistance(binding.totalDistance, it ?: 0.0f)
+        LocationService.totalDistance.observe(viewLifecycleOwner, { totalDist ->
+            distance = totalDist.also { updateDistance(binding.totalDistance, totalDist) }
         })
-        LocationService.totalAveragePace.observe(viewLifecycleOwner, {
-            updatePace(binding.totalPace, it ?: 0.0f)
+        LocationService.totalAveragePace.observe(viewLifecycleOwner, { totalPace ->
+            pace = totalPace.also { updatePace(binding.totalPace, totalPace) }
         })
         LocationService.checkpointDistance.observe(viewLifecycleOwner, {
-            updateDistance(binding.checkpointDistance, it ?: 0.0f)
+            updateDistance(binding.checkpointDistance, it)
         })
         LocationService.checkpointAveragePace.observe(viewLifecycleOwner, {
-            updatePace(binding.checkpointPace, it ?: 0.0f)
+            updatePace(binding.checkpointPace, it)
         })
         LocationService.waypointDistance.observe(viewLifecycleOwner, {
-            updateDistance(binding.waypointDistance, it ?: 0.0f)
+            updateDistance(binding.waypointDistance, it)
         })
         LocationService.waypointAveragePace.observe(viewLifecycleOwner, {
-            updatePace(binding.waypointPace, it ?: 0.0f)
+            updatePace(binding.waypointPace, it)
         })
 
-        StopwatchService.total.observe(viewLifecycleOwner, {
-            updateDuration(binding.totalDuration, it)
+        StopwatchService.total.observe(viewLifecycleOwner, { totalDuration ->
+            duration = totalDuration.also { updateDuration(binding.totalDuration, totalDuration) }
         })
         StopwatchService.checkpoint.observe(viewLifecycleOwner, {
             updateDuration(binding.checkpointDuration, it)
@@ -335,11 +337,12 @@ class SessionFragment : Fragment(R.layout.fragment_session),
      */
     private val onClickSessionStart = View.OnClickListener {
         if (isTracking) {
-            sessionViewModel.createSession()
+            sessionViewModel.updateStoppedSession(distance, duration, pace)
             startLocationService(C.ACTION_STOP_SERVICE)
             startStopwatchService(C.ACTION_STOP_SERVICE)
         } else {
             if (PermissionUtils.hasLocationPermission(requireContext())) {
+                sessionViewModel.createSession()
                 startLocationService(C.ACTION_START_SERVICE)
                 startStopwatchService(C.ACTION_START_SERVICE)
             } else {
@@ -428,6 +431,16 @@ class SessionFragment : Fragment(R.layout.fragment_session),
 
         if (checkpoints.isNotEmpty()) {
             sessionViewModel.saveLocationPoint(checkpoints.last(), C.CP_TYPE_ID)
+        }
+    }
+
+    /**
+     * Observer for [LocationService.waypoint].
+     */
+    private val waypointObserver = Observer<Location?> {
+        waypoint = it?.also {
+            addWaypoint()
+            sessionViewModel.saveLocationPoint(it, C.WP_TYPE_ID)
         }
     }
 
