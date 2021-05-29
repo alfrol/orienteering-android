@@ -14,7 +14,7 @@ import ee.taltech.alfrol.hw02.R
 import ee.taltech.alfrol.hw02.adapters.SessionAdapter
 import ee.taltech.alfrol.hw02.data.model.Session
 import ee.taltech.alfrol.hw02.databinding.FragmentHistoryBinding
-import ee.taltech.alfrol.hw02.ui.viewmodels.SessionViewModel
+import ee.taltech.alfrol.hw02.ui.viewmodels.HistoryViewModel
 
 @AndroidEntryPoint
 class HistoryFragment : Fragment(), SessionAdapter.OnChildClickListener {
@@ -22,7 +22,7 @@ class HistoryFragment : Fragment(), SessionAdapter.OnChildClickListener {
     private var _binding: FragmentHistoryBinding? = null
     private val binding get() = _binding!!
 
-    private val sessionViewModel: SessionViewModel by viewModels()
+    private val historyViewModel: HistoryViewModel by viewModels()
 
     private lateinit var sessionAdapter: SessionAdapter
 
@@ -43,7 +43,7 @@ class HistoryFragment : Fragment(), SessionAdapter.OnChildClickListener {
             layoutManager = LinearLayoutManager(requireContext())
         }
 
-        sessionViewModel.sessionsSortedByRecordedAt.observe(viewLifecycleOwner, {
+        historyViewModel.sessionsSortedByRecordedAt.observe(viewLifecycleOwner, {
             sessionAdapter.submitList(it)
             binding.tvMissingItems.visibility = when (it.isEmpty()) {
                 true -> View.VISIBLE
@@ -65,7 +65,7 @@ class HistoryFragment : Fragment(), SessionAdapter.OnChildClickListener {
             .setTitle(R.string.title_remove_session)
             .setMessage(R.string.text_session_removal_confirmation)
             .setPositiveButton(android.R.string.ok) { _, _ ->
-                sessionViewModel.deleteSession(session)
+                historyViewModel.deleteSession(session)
                 sessionAdapter.notifyDataSetChanged()
             }
             .setNegativeButton(android.R.string.cancel, null)

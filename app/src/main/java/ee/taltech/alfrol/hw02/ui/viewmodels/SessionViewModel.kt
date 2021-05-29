@@ -23,30 +23,6 @@ class SessionViewModel @Inject constructor(
     private val locationPointRepository: LocationPointRepository
 ) : ViewModel() {
 
-    val sessionsSortedByRecordedAt: LiveData<List<Session>> =
-        sessionRepository.findAllSortedByRecordedAt().asLiveData()
-
-    val sessionsSortedByDistance: LiveData<List<Session>> =
-        sessionRepository.findAllSortedByDistance().asLiveData()
-
-    val sessionsSortedByDuration: LiveData<List<Session>> =
-        sessionRepository.findAllSortedByDistance().asLiveData()
-
-    val sessionsSortedByPace: LiveData<List<Session>> =
-        sessionRepository.findAllSortedByPace().asLiveData()
-
-    val totalDistance: LiveData<Float> =
-        sessionRepository.getTotalDistance().asLiveData()
-
-    val averageDistance: LiveData<Float> =
-        sessionRepository.getAverageDistance().asLiveData()
-
-    val averageDuration: LiveData<Long> =
-        sessionRepository.getAverageDuration().asLiveData()
-
-    val averagePace: LiveData<Float> =
-        sessionRepository.getAveragePace().asLiveData()
-
     private var _polylineState = MutableLiveData<PolylineState>()
     val polylineState: LiveData<PolylineState> = _polylineState
 

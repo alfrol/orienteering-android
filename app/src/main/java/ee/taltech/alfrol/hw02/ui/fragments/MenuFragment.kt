@@ -13,7 +13,7 @@ import ee.taltech.alfrol.hw02.C
 import ee.taltech.alfrol.hw02.R
 import ee.taltech.alfrol.hw02.data.SettingsManager
 import ee.taltech.alfrol.hw02.databinding.FragmentMenuBinding
-import ee.taltech.alfrol.hw02.ui.viewmodels.SessionViewModel
+import ee.taltech.alfrol.hw02.ui.viewmodels.MenuViewModel
 import ee.taltech.alfrol.hw02.utils.UIUtils
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
@@ -27,7 +27,7 @@ class MenuFragment : Fragment(R.layout.fragment_menu) {
     private var _binding: FragmentMenuBinding? = null
     private val binding get() = _binding!!
 
-    private val sessionViewModel: SessionViewModel by viewModels()
+    private val menuViewModel: MenuViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -89,25 +89,25 @@ class MenuFragment : Fragment(R.layout.fragment_menu) {
      * Start observing the general statistics.
      */
     private fun startObserving() {
-        sessionViewModel.totalDistance.observe(viewLifecycleOwner, {
+        menuViewModel.totalDistance.observe(viewLifecycleOwner, {
             with(binding) {
                 progressBarTotalDistance.visibility = View.GONE
                 tvTotalDistance.text = UIUtils.formatDistance(requireContext(), it ?: 0.0f)
             }
         })
-        sessionViewModel.averageDistance.observe(viewLifecycleOwner, {
+        menuViewModel.averageDistance.observe(viewLifecycleOwner, {
             with(binding) {
                 progressBarAverageDistance.visibility = View.GONE
                 tvAverageDistance.text = UIUtils.formatDistance(requireContext(), it ?: 0.0f)
             }
         })
-        sessionViewModel.averageDuration.observe(viewLifecycleOwner, {
+        menuViewModel.averageDuration.observe(viewLifecycleOwner, {
             with(binding) {
                 progressBarAverageDuration.visibility = View.GONE
                 tvAverageDuration.text = UIUtils.formatDuration(requireContext(), it ?: 0, false)
             }
         })
-        sessionViewModel.averagePace.observe(viewLifecycleOwner, {
+        menuViewModel.averagePace.observe(viewLifecycleOwner, {
             with(binding) {
                 progressBarAveragePace.visibility = View.GONE
                 tvAveragePace.text = getString(R.string.pace, it ?: 0.0f)
