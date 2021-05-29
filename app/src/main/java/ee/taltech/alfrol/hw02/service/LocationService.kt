@@ -9,6 +9,7 @@ import android.location.Location
 import android.os.Looper
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.MutableLiveData
+import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationResult
@@ -87,7 +88,7 @@ class LocationService : LifecycleService() {
     private fun startTracking() {
         isTracking.postValue(true)
         requestLocationUpdates()
-        registerReceiver(notificationBroadcastReceiver, intentFilter)
+        registerLocationActionReceiver()
         startForeground(C.NOTIFICATION_ID, LocationUtils.createNotification(this, ""))
     }
 
@@ -97,9 +98,27 @@ class LocationService : LifecycleService() {
     private fun stopTracking() {
         postInitialValues()
         fusedLocationProviderClient.removeLocationUpdates(callback)
-        unregisterReceiver(notificationBroadcastReceiver)
+        unregisterLocationActionReceiver()
         stopForeground(true)
         stopSelf()
+    }
+
+    /**
+     * Register the [LocationActionReceiver] for both outside and local broadcasts.
+     */
+    private fun registerLocationActionReceiver() {
+        registerReceiver(notificationBroadcastReceiver, intentFilter)
+        LocalBroadcastManager.getInstance(this)
+            .registerReceiver(notificationBroadcastReceiver, intentFilter)
+    }
+
+    /**
+     * Unregister the [LocationActionReceiver] from both outside and local broadcasts.
+     */
+    private fun unregisterLocationActionReceiver() {
+        unregisterReceiver(notificationBroadcastReceiver)
+        LocalBroadcastManager.getInstance(this)
+            .unregisterReceiver(notificationBroadcastReceiver)
     }
 
     /**
