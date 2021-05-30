@@ -7,22 +7,31 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.location.Location
+import android.os.Build
 import android.os.Looper
-import androidx.lifecycle.LifecycleService
-import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.Observer
+import androidx.lifecycle.*
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
+import com.android.volley.Request
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import dagger.hilt.android.AndroidEntryPoint
 import ee.taltech.alfrol.hw02.C
+import ee.taltech.alfrol.hw02.api.AuthorizedJsonObjectRequest
+import ee.taltech.alfrol.hw02.api.RestHandler
 import ee.taltech.alfrol.hw02.data.SettingsManager
+import ee.taltech.alfrol.hw02.data.model.LocationPoint
+import ee.taltech.alfrol.hw02.data.model.Session
+import ee.taltech.alfrol.hw02.data.repositories.LocationPointRepository
+import ee.taltech.alfrol.hw02.data.repositories.SessionRepository
 import ee.taltech.alfrol.hw02.utils.LocationUtils
 import ee.taltech.alfrol.hw02.utils.PermissionUtils
+import ee.taltech.alfrol.hw02.utils.UIUtils
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
@@ -53,7 +62,16 @@ class LocationService : LifecycleService() {
     }
 
     @Inject
+    lateinit var restHandler: RestHandler
+
+    @Inject
     lateinit var settingsManager: SettingsManager
+
+    @Inject
+    lateinit var sessionRepository: SessionRepository
+
+    @Inject
+    lateinit var locationPointRepository: LocationPointRepository
 
     private lateinit var fusedLocationProviderClient: FusedLocationProviderClient
     private lateinit var notificationManager: NotificationManager
@@ -63,6 +81,7 @@ class LocationService : LifecycleService() {
     private var waypointDuration = 0L
     private var lastWholeSecond = 0L
 
+    private var activeSession: Session? = null
 
     private val intentFilter = IntentFilter().apply {
         addAction(C.ACTION_ADD_CHECKPOINT)
@@ -122,10 +141,10 @@ class LocationService : LifecycleService() {
      */
     private fun startObserving() {
         StopwatchService.total.observe(this, stopwatchObserver)
-        StopwatchService.checkpoint.observe(this, {
+        StopwatchService.checkpoint.observe(this, Observer {
             waypointDuration = it ?: 0L
         })
-        StopwatchService.waypoint.observe(this, {
+        StopwatchService.waypoint.observe(this, Observer {
             checkpointDuration = it ?: 0L
         })
     }
@@ -158,6 +177,7 @@ class LocationService : LifecycleService() {
      */
     private fun startTracking() {
         isTracking.postValue(true)
+        createSession()
         startObserving()
         requestLocationUpdates()
         registerLocationActionReceiver()
@@ -168,6 +188,7 @@ class LocationService : LifecycleService() {
      * Stop tracking the device location.
      */
     private fun stopTracking() {
+        updateStoppedSession()
         postInitialValues()
         fusedLocationProviderClient.removeLocationUpdates(callback)
         unregisterLocationActionReceiver()
@@ -257,6 +278,7 @@ class LocationService : LifecycleService() {
             val pathPointsValue = pathPoints.value ?: mutableListOf()
             if (pathPointsValue.isEmpty()) {
                 addPoint(pathPoints, location)
+                saveLocationPoint(location, C.LOC_TYPE_ID)
                 return
             }
 
@@ -274,6 +296,7 @@ class LocationService : LifecycleService() {
             }
 
             addPoint(pathPoints, location)
+            saveLocationPoint(location, C.LOC_TYPE_ID)
         }
     }
 
@@ -370,6 +393,161 @@ class LocationService : LifecycleService() {
         waypointAveragePace.value = LocationUtils.calculatePace(waypointDuration, it)
     }
 
+    /**
+     * Create and save a new session.
+     */
+    private fun createSession() {
+        runBlocking {
+            val session = Session()
+            val id = sessionRepository.insertSession(session)
+            activeSession = Session(id, recordedAt = session.recordedAt)
+
+            // Persist the session id until it's stopped
+            settingsManager.setValue(SettingsManager.ACTIVE_SESSION_ID_KEY, id)
+        }
+
+        lifecycleScope.launch {
+            createSessionInBackend()
+        }
+    }
+
+    /**
+     * Update the stopped session details in the db.
+     */
+    private fun updateStoppedSession() {
+        val session = activeSession ?: return
+
+        lifecycleScope.launch {
+            val updatedSession = Session(
+                id = session.id,
+                externalId = session.externalId,
+                recordedAt = session.recordedAt,
+                distance = totalDistance.value ?: 0.0f,
+                duration = duration,
+                pace = totalAveragePace.value ?: 0.0f
+            )
+            sessionRepository.updateSession(updatedSession)
+        }
+    }
+
+    /**
+     * Try to create a new session in the backend.
+     */
+    private suspend fun createSessionInBackend() {
+        val token = settingsManager.getValue(SettingsManager.TOKEN_KEY, null).first() ?: return
+        val session = activeSession ?: return
+        val requestBody = JSONObject().apply {
+            put(C.JSON_NAME_KEY, session.name)
+            put(C.JSON_DESCRIPTION_KEY, session.description)
+            put(C.JSON_RECORDED_AT_KEY, session.recordedAtIso)
+            put(C.JSON_PACE_MIN_KEY, 420)
+            put(C.JSON_PACE_MAX_KEY, 600)
+        }
+
+        val sessionRequest = AuthorizedJsonObjectRequest(
+            Request.Method.POST, C.API_SESSIONS_URL, requestBody,
+            { response ->
+                // Save the id of the session that is used in the backend server.
+                val externalId = response.getString(C.JSON_ID_KEY)
+                activeSession =
+                    Session(id = session.id, externalId, recordedAt = session.recordedAt)
+
+                lifecycleScope.launch {
+                    sessionRepository.updateSession(activeSession!!)
+                }
+            },
+            {
+                // TODO: Do something here?
+            },
+            token
+        )
+        restHandler.addRequest(sessionRequest)
+    }
+
+    /**
+     * Save the location point to the database and try to sync to the backend.
+     *
+     * @param location Location point to save.
+     * @param type One of the [C.LOC_TYPE_ID], [C.WP_TYPE_ID], [C.CP_TYPE_ID].
+     */
+    fun saveLocationPoint(location: Location, type: String) {
+        lifecycleScope.launch {
+            val session = activeSession ?: return@launch
+            val token =
+                settingsManager.getValue(SettingsManager.TOKEN_KEY, null).first() ?: return@launch
+
+            if (type != C.WP_TYPE_ID) {
+                saveLocationToDb(session.id, location, type)
+            }
+            saveLocationToBackend(session.externalId, token, location, type)
+        }
+    }
+
+    /**
+     * Save the given location point to the database.
+     *
+     * @param sessionId ID of the session to associate this point with.
+     * @param location Location that represents the point to save.
+     * @param type Type of the location point. One of the [C.LOC_TYPE_ID], [C.CP_TYPE_ID].
+     */
+    private fun saveLocationToDb(sessionId: Long, location: Location, type: String) {
+        val locationPoint = LocationPoint(
+            sessionId = sessionId,
+            recordedAt = location.time,
+            latitude = location.latitude,
+            longitude = location.longitude,
+            altitude = location.altitude,
+            accuracy = location.accuracy,
+            type = type
+        )
+
+        lifecycleScope.launch {
+            locationPointRepository.insertLocationPoint(locationPoint)
+        }
+    }
+
+    /**
+     * Save the given location point to the backend server.
+     *
+     * @param sessionExternalId Backend ID of the session to associate this point with.
+     * @param location Location that represents the point to save.
+     * @param type Type of the location point. One of the [C.LOC_TYPE_ID], [C.CP_TYPE_ID].
+     */
+    @SuppressLint("NewApi")
+    private fun saveLocationToBackend(
+        sessionExternalId: String?,
+        token: String,
+        location: Location,
+        type: String
+    ) {
+        val recordedAt = UIUtils.timeMillisToIsoOffset(location.time)
+        val requestBody = JSONObject().apply {
+            put(C.JSON_RECORDED_AT_KEY, recordedAt)
+            put(C.JSON_LATITUDE_KEY, location.latitude)
+            put(C.JSON_LONGITUDE_KEY, location.longitude)
+            put(C.JSON_GPS_SESSION_ID, sessionExternalId)
+            put(C.JSON_GPS_LOCATION_TYPE_ID, type)
+            put(C.JSON_ALTITUDE_KEY, location.altitude)
+            put(C.JSON_ACCURACY_KEY, location.accuracy)
+
+            // Vertical accuracy is only available on devices with version O or higher.
+            val verticalAccuracy = when (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                true -> location.verticalAccuracyMeters
+                false -> location.accuracy
+            }
+            put(C.JSON_VERTICAL_ACCURACY, verticalAccuracy)
+        }
+
+        val sessionRequest = AuthorizedJsonObjectRequest(
+            Request.Method.POST, C.API_LOCATIONS_URL, requestBody,
+            { },
+            {
+                // TODO: Do something here?
+            },
+            token
+        )
+        restHandler.addRequest(sessionRequest)
+    }
 
     /**
      * Broadcast receiver for the service notification actions.
@@ -381,7 +559,10 @@ class LocationService : LifecycleService() {
                 val lastPoint = pathPoints.value?.last() ?: return
 
                 when (it.action) {
-                    C.ACTION_ADD_CHECKPOINT -> addPoint(checkpoints, lastPoint)
+                    C.ACTION_ADD_CHECKPOINT -> addPoint(
+                        checkpoints,
+                        lastPoint
+                    ).also { saveLocationPoint(lastPoint, C.CP_TYPE_ID) }
                     C.ACTION_ADD_WAYPOINT -> waypoint.postValue(lastPoint)
                 }
             }

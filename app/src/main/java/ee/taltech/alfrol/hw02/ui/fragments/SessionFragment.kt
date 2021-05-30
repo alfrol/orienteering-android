@@ -377,12 +377,10 @@ class SessionFragment : Fragment(R.layout.fragment_session),
      */
     private val onClickSessionStart = View.OnClickListener {
         if (isTracking) {
-            sessionViewModel.updateStoppedSession(distance, duration, pace)
             startLocationService(C.ACTION_STOP_SERVICE)
             startStopwatchService(C.ACTION_STOP_SERVICE)
         } else {
             if (PermissionUtils.hasLocationPermission(requireContext())) {
-                sessionViewModel.createSession()
                 startLocationService(C.ACTION_START_SERVICE)
                 startStopwatchService(C.ACTION_START_SERVICE)
             } else {
@@ -482,10 +480,6 @@ class SessionFragment : Fragment(R.layout.fragment_session),
     private val pathPointsObserver = Observer<MutableList<Location>> {
         pathPoints = it ?: mutableListOf()
         addLastPathPoint()
-
-        if (pathPoints.isNotEmpty()) {
-            sessionViewModel.saveLocationPoint(pathPoints.last(), C.LOC_TYPE_ID)
-        }
     }
 
     /**
@@ -495,10 +489,6 @@ class SessionFragment : Fragment(R.layout.fragment_session),
         checkpoints = it ?: mutableListOf()
         addLastCheckpoint()
         sendBroadcast(C.ACTION_START_CHECKPOINT_STOPWATCH)
-
-        if (checkpoints.isNotEmpty()) {
-            sessionViewModel.saveLocationPoint(checkpoints.last(), C.CP_TYPE_ID)
-        }
     }
 
     /**
@@ -509,8 +499,6 @@ class SessionFragment : Fragment(R.layout.fragment_session),
             waypoint = wp
             addWaypoint()
             sendBroadcast(C.ACTION_START_WAYPOINT_STOPWATCH)
-
-            sessionViewModel.saveLocationPoint(wp, C.WP_TYPE_ID)
         }
     }
 
