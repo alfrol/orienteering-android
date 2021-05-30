@@ -438,9 +438,10 @@ class SessionFragment : Fragment(R.layout.fragment_session),
      * Observer for [LocationService.waypoint].
      */
     private val waypointObserver = Observer<Location?> {
-        waypoint = it?.also {
+        it?.let { wp ->
+            waypoint = wp
             addWaypoint()
-            sessionViewModel.saveLocationPoint(it, C.WP_TYPE_ID)
+            sessionViewModel.saveLocationPoint(wp, C.WP_TYPE_ID)
         }
     }
 
