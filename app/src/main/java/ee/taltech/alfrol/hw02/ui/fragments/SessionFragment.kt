@@ -447,6 +447,7 @@ class SessionFragment : Fragment(R.layout.fragment_session),
      */
     private val polylineStateObserver = Observer<PolylineState> {
         it?.let { state ->
+            polylineState = state
             polylineOptions = UIUtils.getPolylineOptions(requireContext(), state.color, state.width)
             polyline?.apply {
                 width = state.width

@@ -56,13 +56,13 @@
             android:buttonTint="@color/secondary" />
 
         <RadioButton
-            android:id="@+id/rb_color_red"
+            android:id="@+id/rb_color_grey"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:buttonTint="@color/grey" />
 
         <RadioButton
-            android:id="@+id/rb_color_grey"
+            android:id="@+id/rb_color_red"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:buttonTint="@color/red" />

@@ -427,6 +427,8 @@ class LocationService : LifecycleService() {
                 pace = totalAveragePace.value ?: 0.0f
             )
             sessionRepository.updateSession(updatedSession)
+
+            settingsManager.removeValue(SettingsManager.ACTIVE_SESSION_ID_KEY)
         }
     }
 
