@@ -12,6 +12,7 @@ import android.view.animation.AnimationUtils
 import android.view.animation.RotateAnimation
 import android.widget.TextView
 import androidx.activity.result.ActivityResultLauncher
+import androidx.annotation.DrawableRes
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
@@ -83,6 +84,8 @@ class SessionFragment : Fragment(R.layout.fragment_session),
     private var gpxFileName = C.DEFAULT_GPX_FILE_NAME
 
     private var map: GoogleMap? = null
+    private var polylineOptions: PolylineOptions = PolylineOptions()
+    private var polyline: Polyline? = null
     private var polylineState = PolylineState(C.DEFAULT_POLYLINE_COLOR, C.DEFAULT_POLYLINE_WIDTH)
     private var waypointMarker: Marker? = null
 
@@ -148,6 +151,10 @@ class SessionFragment : Fragment(R.layout.fragment_session),
     override fun onResume() {
         super.onResume()
         binding.mapView.onResume()
+
+        if (isTracking) {
+            addAllPathPoints()
+        }
 
         if (isCompassEnabled) {
             compassListener.startListening()
@@ -272,9 +279,7 @@ class SessionFragment : Fragment(R.layout.fragment_session),
      */
     private fun startObserving() {
         // Polyline is needed for both view mode and session mode so observe it in any case.
-        sessionViewModel.polylineState.observe(viewLifecycleOwner, {
-            polylineState = it?.also { addAllPathPoints() } ?: polylineState
-        })
+        sessionViewModel.polylineState.observe(viewLifecycleOwner, polylineStateObserver)
 
         if (args.isPreview) {
             // Only observe the preview session in view mode besides the polyline state.
@@ -438,6 +443,19 @@ class SessionFragment : Fragment(R.layout.fragment_session),
     }
 
     /**
+     * Observer for changes in polyline settings.
+     */
+    private val polylineStateObserver = Observer<PolylineState> {
+        it?.let { state ->
+            polylineOptions = UIUtils.getPolylineOptions(requireContext(), state.color, state.width)
+            polyline?.apply {
+                width = state.width
+                color = state.color
+            }
+        }
+    }
+
+    /**
      * Observer for preview session livedata.
      */
     private val previewSessionObserver = Observer<SessionWithLocationPoints> {
@@ -536,19 +554,25 @@ class SessionFragment : Fragment(R.layout.fragment_session),
      * Add the last point from the path points to the map.
      */
     private fun addLastPathPoint() {
-        if (!isTracking || pathPoints.size < 2) {
+        if (!isTracking || pathPoints.isEmpty()) {
+            return
+        }
+        val lastPathPoint = pathPoints.last()
+        if (pathPoints.size == 1) {
+            addMarker(lastPathPoint, R.drawable.ic_start_marker)
             return
         }
 
-        val lastPathPoint = pathPoints.last()
+        if (polyline != null) {
+            polyline!!.remove()
+        }
+
         val preLastPathPoint = pathPoints[pathPoints.lastIndex - 1]
         val latLngLast = LatLng(lastPathPoint.latitude, lastPathPoint.longitude)
         val latLngPreLast = LatLng(preLastPathPoint.latitude, preLastPathPoint.longitude)
 
-        val polylineOptions =
-            UIUtils.getPolylineOptions(requireContext(), polylineState.color, polylineState.width)
         polylineOptions.add(latLngPreLast).add(latLngLast)
-        map?.addPolyline(polylineOptions)
+        polyline = map?.addPolyline(polylineOptions)
 
         // If following the device then always keep the last path point centered.
         if (!args.isPreview && isFollowingDevice) {
@@ -564,13 +588,24 @@ class SessionFragment : Fragment(R.layout.fragment_session),
             return
         }
 
-        val polylineOptions =
-            UIUtils.getPolylineOptions(requireContext(), polylineState.color, polylineState.width)
+        if (polyline != null) {
+            polyline!!.remove()
+        }
+
+        polylineOptions =
+            UIUtils.getPolylineOptions(
+                requireContext(),
+                polylineState.color,
+                polylineState.width
+            )
         polylineOptions.addAll(LocationUtils.mapLocationToLatLng(pathPoints))
-        map?.addPolyline(polylineOptions)
+        polyline = map?.addPolyline(polylineOptions)
+        addMarker(pathPoints.first(), R.drawable.ic_start_marker)
 
         if (!args.isPreview && isFollowingDevice) {
             navigateToCurrentLocation(pathPoints.last())
+        } else if (args.isPreview) {
+            addMarker(pathPoints.last(), R.drawable.ic_finish_marker)
         }
     }
 
@@ -583,26 +618,14 @@ class SessionFragment : Fragment(R.layout.fragment_session),
         }
 
         val lastCheckpoint = checkpoints.last()
-        val latLng = LatLng(lastCheckpoint.latitude, lastCheckpoint.longitude)
-        val markerOptions = MarkerOptions().apply {
-            position(latLng)
-            icon(BitmapDescriptorFactory.fromResource(R.drawable.ic_checkpoint_marker))
-        }
-        map?.addMarker(markerOptions)
+        addMarker(lastCheckpoint, R.drawable.ic_checkpoint_marker)
     }
 
     /**
      * Add all the points from the checkpoints list to the map.
      */
     private fun addAllCheckpoints() =
-        checkpoints.forEach {
-            val latLng = LatLng(it.latitude, it.longitude)
-            val markerOptions = MarkerOptions().apply {
-                position(latLng)
-                icon(BitmapDescriptorFactory.fromResource(R.drawable.ic_checkpoint_marker))
-            }
-            map?.addMarker(markerOptions)
-        }
+        checkpoints.forEach { addMarker(it, R.drawable.ic_checkpoint_marker) }
 
     /**
      * Add a new waypoint on the map.
@@ -618,12 +641,22 @@ class SessionFragment : Fragment(R.layout.fragment_session),
             waypointMarker!!.remove()
         }
 
-        val latLng = LatLng(waypoint!!.latitude, waypoint!!.longitude)
+        waypointMarker = addMarker(waypoint!!, R.drawable.ic_waypoint_marker)
+    }
+
+    /**
+     * Set the location as starting point and add according marker.
+     *
+     * @param location Point on the map where to add the marker.
+     * @param icon Icon to add in place of the marker.
+     * @return created [Marker] object.
+     */
+    private fun addMarker(location: Location, @DrawableRes icon: Int): Marker? {
         val markerOptions = MarkerOptions().apply {
-            position(latLng)
-            icon(BitmapDescriptorFactory.fromResource(R.drawable.ic_waypoint_marker))
+            position(LatLng(location.latitude, location.longitude))
+            icon(BitmapDescriptorFactory.fromResource(icon))
         }
-        waypointMarker = map?.addMarker(markerOptions)
+        return map?.addMarker(markerOptions)
     }
 
     /**

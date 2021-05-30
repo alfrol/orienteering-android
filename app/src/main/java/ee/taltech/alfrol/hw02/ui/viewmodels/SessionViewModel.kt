@@ -4,13 +4,10 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.android.volley.Request
 import com.google.android.gms.maps.model.Polyline
 import dagger.hilt.android.lifecycle.HiltViewModel
 import ee.taltech.alfrol.hw02.C
 import ee.taltech.alfrol.hw02.R
-import ee.taltech.alfrol.hw02.api.AuthorizedJsonObjectRequest
-import ee.taltech.alfrol.hw02.api.RestHandler
 import ee.taltech.alfrol.hw02.data.SettingsManager
 import ee.taltech.alfrol.hw02.data.model.Session
 import ee.taltech.alfrol.hw02.data.model.SessionWithLocationPoints
@@ -19,13 +16,10 @@ import ee.taltech.alfrol.hw02.ui.states.CompassState
 import ee.taltech.alfrol.hw02.ui.states.PolylineState
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
-import org.json.JSONObject
 import javax.inject.Inject
 
 @HiltViewModel
 class SessionViewModel @Inject constructor(
-    private val restHandler: RestHandler,
     private val settingsManager: SettingsManager,
     private val sessionRepository: SessionRepository
 ) : ViewModel() {
