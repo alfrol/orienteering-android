@@ -387,7 +387,6 @@ class SessionFragment : Fragment(R.layout.fragment_session),
     private val onClickAddCheckpoint = View.OnClickListener {
         if (isTracking) {
             sendBroadcast(C.ACTION_ADD_CHECKPOINT)
-            sendBroadcast(C.ACTION_START_CHECKPOINT_STOPWATCH)
         }
     }
 
@@ -397,7 +396,6 @@ class SessionFragment : Fragment(R.layout.fragment_session),
     private val onClickAddWaypoint = View.OnClickListener {
         if (isTracking) {
             sendBroadcast(C.ACTION_ADD_WAYPOINT)
-            sendBroadcast(C.ACTION_START_WAYPOINT_STOPWATCH)
         }
     }
 
@@ -428,6 +426,7 @@ class SessionFragment : Fragment(R.layout.fragment_session),
     private val checkpointsObserver = Observer<MutableList<Location>> {
         checkpoints = it ?: mutableListOf()
         addLastCheckpoint()
+        sendBroadcast(C.ACTION_START_CHECKPOINT_STOPWATCH)
 
         if (checkpoints.isNotEmpty()) {
             sessionViewModel.saveLocationPoint(checkpoints.last(), C.CP_TYPE_ID)
@@ -441,6 +440,8 @@ class SessionFragment : Fragment(R.layout.fragment_session),
         it?.let { wp ->
             waypoint = wp
             addWaypoint()
+            sendBroadcast(C.ACTION_START_WAYPOINT_STOPWATCH)
+
             sessionViewModel.saveLocationPoint(wp, C.WP_TYPE_ID)
         }
     }

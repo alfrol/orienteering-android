@@ -275,7 +275,6 @@ class LocationService : LifecycleService() {
             }
 
             addPoint(pathPoints, location)
-            updateData()
         }
     }
 
@@ -290,6 +289,7 @@ class LocationService : LifecycleService() {
             add(location)
             points.postValue(this)
         } ?: points.postValue(mutableListOf(location))
+        updateData()
     }
 
     /**
