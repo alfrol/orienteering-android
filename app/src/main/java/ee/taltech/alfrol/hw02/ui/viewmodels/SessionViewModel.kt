@@ -14,6 +14,7 @@ import ee.taltech.alfrol.hw02.api.RestHandler
 import ee.taltech.alfrol.hw02.data.SettingsManager
 import ee.taltech.alfrol.hw02.data.model.LocationPoint
 import ee.taltech.alfrol.hw02.data.model.Session
+import ee.taltech.alfrol.hw02.data.model.SessionWithLocationPoints
 import ee.taltech.alfrol.hw02.data.repositories.LocationPointRepository
 import ee.taltech.alfrol.hw02.data.repositories.SessionRepository
 import ee.taltech.alfrol.hw02.ui.states.CompassState
@@ -39,6 +40,9 @@ class SessionViewModel @Inject constructor(
     private var _compassState = MutableLiveData<CompassState>()
     val compassState: LiveData<CompassState> = _compassState
 
+    private var _previewSession = MutableLiveData<SessionWithLocationPoints>()
+    val previewSession: LiveData<SessionWithLocationPoints> = _previewSession
+
     private var activeSession: Session? = null
 
     init {
@@ -60,8 +64,17 @@ class SessionViewModel @Inject constructor(
         }
     }
 
-    fun getSessionWithLocationPoints(id: Long) =
-        sessionRepository.findByIdWithLocationPoints(id).asLiveData()
+    /**
+     * Load the session for preview.
+     * Preview session must come with all info and all the location points.
+     *
+     * @param id ID of the session to load from the db.
+     */
+    fun loadPreviewSession(id: Long) {
+        viewModelScope.launch {
+            _previewSession.postValue(sessionRepository.findByIdWithLocationPoints(id).first())
+        }
+    }
 
     /**
      * Create and save a new session.

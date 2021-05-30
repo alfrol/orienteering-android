@@ -53,6 +53,7 @@ object C {
     const val DEFAULT_MAP_CAMERA_ANIMATION_DURATION = 2000
     const val DEFAULT_POLYLINE_WIDTH = 10.0f
     const val DEFAULT_POLYLINE_COLOR = R.color.primary
+    const val DEFAULT_PREVIEW_TRACK_PADDING = 50
 
     const val LOC_TYPE_ID = "00000000-0000-0000-0000-000000000001"
     const val WP_TYPE_ID = "00000000-0000-0000-0000-000000000002"
@@ -60,4 +61,6 @@ object C {
 
     const val LOCATION_PERMISSION_REQUEST_CODE = 1
     const val STORAGE_WRITE_PERMISSION_REQUEST_CODE = 2
+
+    const val PROVIDER_FUSED = "fused"
 }

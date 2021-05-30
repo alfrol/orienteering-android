@@ -10,6 +10,7 @@ import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.maps.model.LatLng
 import ee.taltech.alfrol.hw02.C
 import ee.taltech.alfrol.hw02.R
+import ee.taltech.alfrol.hw02.data.model.LocationPoint
 import ee.taltech.alfrol.hw02.service.LocationService
 import java.util.concurrent.TimeUnit
 
@@ -104,6 +105,18 @@ object LocationUtils {
      */
     fun mapLocationToLatLng(location: List<Location>): MutableList<LatLng> =
         location.map { LatLng(it.latitude, it.longitude) }.toMutableList()
+
+    /**
+     * Map  [LocationPoint] objet to [Location] object.
+     */
+    fun mapLocationPointToLocation(locationPoint: LocationPoint): Location =
+        Location(C.PROVIDER_FUSED).apply {
+            latitude = locationPoint.latitude
+            longitude = locationPoint.longitude
+            time = locationPoint.recordedAt
+            altitude = locationPoint.altitude
+            accuracy = locationPoint.accuracy
+        }
 
     /**
      * Create a new pending intent for the notification.

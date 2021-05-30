@@ -50,7 +50,6 @@ class LocationService : LifecycleService() {
         private const val MAX_ACCURACY = 30.0f
         private const val MAX_DISTANCE = 50.0f
         private const val MIN_DISTANCE = 3.0f
-        private const val PROVIDER = "fused"
     }
 
     @Inject
@@ -270,7 +269,7 @@ class LocationService : LifecycleService() {
             if (distance > MAX_DISTANCE || distance < MIN_DISTANCE) {
                 return
             }
-            if (location.provider != PROVIDER) {
+            if (location.provider != C.PROVIDER_FUSED) {
                 return
             }
 

@@ -27,6 +27,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import ee.taltech.alfrol.hw02.C
 import ee.taltech.alfrol.hw02.R
 import ee.taltech.alfrol.hw02.data.SettingsManager
+import ee.taltech.alfrol.hw02.data.model.SessionWithLocationPoints
 import ee.taltech.alfrol.hw02.databinding.FragmentSessionBinding
 import ee.taltech.alfrol.hw02.service.LocationService
 import ee.taltech.alfrol.hw02.service.StopwatchService
@@ -75,7 +76,6 @@ class SessionFragment : Fragment(R.layout.fragment_session),
     private lateinit var compassListener: CompassListener
     private lateinit var bottomSheetBehavior: BottomSheetBehavior<View>
 
-    private var isViewMode = false
     private var isTracking = false
     private var isFollowingDevice = true
     private var currentCompassAngle = 0.0f
@@ -101,8 +101,6 @@ class SessionFragment : Fragment(R.layout.fragment_session),
     ): View {
         _binding = FragmentSessionBinding.inflate(inflater, container, false)
 
-        isViewMode = args.isPreview
-
         binding.fabSessionStart.backgroundTintList =
             ContextCompat.getColorStateList(requireContext(), R.color.color_fab_session)
         compassListener = CompassListener(requireContext(), this)
@@ -116,6 +114,7 @@ class SessionFragment : Fragment(R.layout.fragment_session),
             mapView.onCreate(savedInstanceState)
             mapView.getMapAsync(this@SessionFragment)
 
+            fabExportGpx.setOnClickListener(onClickExportGpx)
             fabSessionStart.setOnClickListener(onClickSessionStart)
             fabSettings.setOnClickListener(onClickSettings)
             fabCenterMapView.setOnClickListener(onClickCenterMapView)
@@ -133,6 +132,7 @@ class SessionFragment : Fragment(R.layout.fragment_session),
             bottomSheetBehavior.state = BottomSheetBehavior.STATE_COLLAPSED
         }
         startObserving()
+        setupUi()
     }
 
     override fun onResume() {
@@ -174,8 +174,13 @@ class SessionFragment : Fragment(R.layout.fragment_session),
     override fun onMapReady(googleMap: GoogleMap) {
         map = googleMap
 
+        with(map?.uiSettings) {
+            this?.isMyLocationButtonEnabled = false
+            this?.isCompassEnabled = false
+        }
+
         // Only listen to map events in session mode
-        if (!isViewMode) {
+        if (!args.isPreview) {
             map?.setOnMapClickListener(this)
             map?.setOnCameraMoveStartedListener(this)
 
@@ -187,13 +192,11 @@ class SessionFragment : Fragment(R.layout.fragment_session),
                     startLocationService(C.ACTION_GET_CURRENT_LOCATION)
                 }
             }
-        }
 
-        with(map?.uiSettings) {
-            this?.isMyLocationButtonEnabled = false
-            this?.isCompassEnabled = false
+            restoreMapData()
+        } else {
+            sessionViewModel.loadPreviewSession(args.previewedSessionId)
         }
-        restoreMapData()
     }
 
     override fun onMapClick(p0: LatLng) {
@@ -258,6 +261,17 @@ class SessionFragment : Fragment(R.layout.fragment_session),
      * [LocationService], [StopwatchService] and [SessionViewModel].
      */
     private fun startObserving() {
+        // Polyline is needed for both view mode and session mode so observe it in any case.
+        sessionViewModel.polylineState.observe(viewLifecycleOwner, {
+            polylineState = it?.also { addAllPathPoints() } ?: polylineState
+        })
+
+        if (args.isPreview) {
+            // Only observe the preview session in view mode besides the polyline state.
+            sessionViewModel.previewSession.observe(viewLifecycleOwner, previewSessionObserver)
+            return
+        }
+
         LocationService.isTracking.observe(viewLifecycleOwner, isTrackingObserver)
         LocationService.pathPoints.observe(viewLifecycleOwner, pathPointsObserver)
         LocationService.checkpoints.observe(viewLifecycleOwner, checkpointsObserver)
@@ -294,12 +308,28 @@ class SessionFragment : Fragment(R.layout.fragment_session),
             updateDuration(binding.waypointDuration, it)
         })
 
-        sessionViewModel.polylineState.observe(viewLifecycleOwner, {
-            polylineState = it?.also { addAllPathPoints() } ?: polylineState
-        })
         sessionViewModel.compassState.observe(viewLifecycleOwner, {
             it?.let { compassState -> toggleCompass(compassState) }
         })
+    }
+
+    /**
+     * Prepare the UI according to mode (preview or session mode).
+     * In preview mode most action buttons are disabled and hidden
+     * and bottom sheet is in fixed position.
+     */
+    private fun setupUi() {
+        if (!args.isPreview) {
+            return
+        }
+
+        with(binding) {
+            fabExportGpx.visibility = View.VISIBLE
+            fabSessionStart.visibility = View.GONE
+            fabSettings.visibility = View.GONE
+
+            bottomSheetBehavior.isDraggable = false
+        }
     }
 
     /**
@@ -331,6 +361,13 @@ class SessionFragment : Fragment(R.layout.fragment_session),
      */
     private fun sendBroadcast(action: String) =
         LocalBroadcastManager.getInstance(requireContext()).sendBroadcast(Intent(action))
+
+    /**
+     * Listener for export GPX file button.
+     */
+    private val onClickExportGpx = View.OnClickListener {
+
+    }
 
     /**
      * Listener for session start/stop button.
@@ -397,6 +434,31 @@ class SessionFragment : Fragment(R.layout.fragment_session),
         if (isTracking) {
             sendBroadcast(C.ACTION_ADD_WAYPOINT)
         }
+    }
+
+    /**
+     * Observer for preview session livedata.
+     */
+    private val previewSessionObserver = Observer<SessionWithLocationPoints> {
+        val session = it.session
+
+        with(binding) {
+            updateDistance(totalDistance, session.distance)
+            updateDuration(totalDuration, session.duration)
+            updatePace(totalPace, session.pace)
+        }
+
+        it.locationPoints.forEach { point ->
+            val location = LocationUtils.mapLocationPointToLocation(point)
+
+            when (point.type) {
+                C.LOC_TYPE_ID -> pathPoints.add(location)
+                C.CP_TYPE_ID -> checkpoints.add(location)
+            }
+        }
+
+        restoreMapData()
+        focusOnPreviewTrack()
     }
 
     /**
@@ -495,7 +557,7 @@ class SessionFragment : Fragment(R.layout.fragment_session),
         map?.addPolyline(polylineOptions)
 
         // If following the device then always keep the last path point centered.
-        if (isFollowingDevice) {
+        if (!args.isPreview && isFollowingDevice) {
             navigateToCurrentLocation(lastPathPoint)
         }
     }
@@ -513,7 +575,7 @@ class SessionFragment : Fragment(R.layout.fragment_session),
         polylineOptions.addAll(LocationUtils.mapLocationToLatLng(pathPoints))
         map?.addPolyline(polylineOptions)
 
-        if (isFollowingDevice) {
+        if (!args.isPreview && isFollowingDevice) {
             navigateToCurrentLocation(pathPoints.last())
         }
     }
@@ -588,6 +650,23 @@ class SessionFragment : Fragment(R.layout.fragment_session),
             CameraUpdateFactory.newLatLngZoom(latLng, C.DEFAULT_MAP_ZOOM),
             C.DEFAULT_MAP_CAMERA_ANIMATION_DURATION,
             null
+        )
+    }
+
+    /**
+     * Focus the camera on the preview session track so that it's fully visible.
+     */
+    private fun focusOnPreviewTrack() {
+        val builder = LatLngBounds.builder()
+        LocationUtils.mapLocationToLatLng(pathPoints).forEach { point ->
+            builder.include(point)
+        }
+
+        map?.moveCamera(
+            CameraUpdateFactory.newLatLngBounds(
+                builder.build(),
+                C.DEFAULT_PREVIEW_TRACK_PADDING
+            )
         )
     }
 
