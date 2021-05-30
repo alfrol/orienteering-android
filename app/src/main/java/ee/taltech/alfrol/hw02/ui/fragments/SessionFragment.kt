@@ -11,6 +11,7 @@ import android.view.animation.Animation
 import android.view.animation.AnimationUtils
 import android.view.animation.RotateAnimation
 import android.widget.TextView
+import androidx.activity.result.ActivityResultLauncher
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
@@ -34,10 +35,7 @@ import ee.taltech.alfrol.hw02.service.StopwatchService
 import ee.taltech.alfrol.hw02.ui.states.CompassState
 import ee.taltech.alfrol.hw02.ui.states.PolylineState
 import ee.taltech.alfrol.hw02.ui.viewmodels.SessionViewModel
-import ee.taltech.alfrol.hw02.utils.CompassListener
-import ee.taltech.alfrol.hw02.utils.LocationUtils
-import ee.taltech.alfrol.hw02.utils.PermissionUtils
-import ee.taltech.alfrol.hw02.utils.UIUtils
+import ee.taltech.alfrol.hw02.utils.*
 import kotlinx.coroutines.delay
 import pub.devrel.easypermissions.AppSettingsDialog
 import pub.devrel.easypermissions.EasyPermissions
@@ -75,12 +73,14 @@ class SessionFragment : Fragment(R.layout.fragment_session),
 
     private lateinit var compassListener: CompassListener
     private lateinit var bottomSheetBehavior: BottomSheetBehavior<View>
+    private lateinit var gpxExportLauncher: ActivityResultLauncher<String>
 
     private var isTracking = false
     private var isFollowingDevice = true
     private var currentCompassAngle = 0.0f
     private var isCompassEnabled = false
     private var areSettingsOpen = false
+    private var gpxFileName = C.DEFAULT_GPX_FILE_NAME
 
     private var map: GoogleMap? = null
     private var polylineState = PolylineState(C.DEFAULT_POLYLINE_COLOR, C.DEFAULT_POLYLINE_WIDTH)
@@ -101,6 +101,14 @@ class SessionFragment : Fragment(R.layout.fragment_session),
     ): View {
         _binding = FragmentSessionBinding.inflate(inflater, container, false)
 
+        // Register the contract for creating a GPX file when it's a preview mode.
+        if (args.isPreview) {
+            gpxExportLauncher =
+                registerForActivityResult(CreateDocumentContract()) {
+                    GpxConverter.save(requireContext(), it, pathPoints)
+                }
+        }
+
         binding.fabSessionStart.backgroundTintList =
             ContextCompat.getColorStateList(requireContext(), R.color.color_fab_session)
         compassListener = CompassListener(requireContext(), this)
@@ -114,7 +122,9 @@ class SessionFragment : Fragment(R.layout.fragment_session),
             mapView.onCreate(savedInstanceState)
             mapView.getMapAsync(this@SessionFragment)
 
-            fabExportGpx.setOnClickListener(onClickExportGpx)
+            fabExportGpx.setOnClickListener {
+                gpxExportLauncher.launch(gpxFileName)
+            }
             fabSessionStart.setOnClickListener(onClickSessionStart)
             fabSettings.setOnClickListener(onClickSettings)
             fabCenterMapView.setOnClickListener(onClickCenterMapView)
@@ -363,13 +373,6 @@ class SessionFragment : Fragment(R.layout.fragment_session),
         LocalBroadcastManager.getInstance(requireContext()).sendBroadcast(Intent(action))
 
     /**
-     * Listener for export GPX file button.
-     */
-    private val onClickExportGpx = View.OnClickListener {
-
-    }
-
-    /**
      * Listener for session start/stop button.
      */
     private val onClickSessionStart = View.OnClickListener {
@@ -441,6 +444,9 @@ class SessionFragment : Fragment(R.layout.fragment_session),
      */
     private val previewSessionObserver = Observer<SessionWithLocationPoints> {
         val session = it.session
+
+        // Save it here in case the user needs to save the file
+        gpxFileName = "${session.name.replace(" ", "-")}_${session.recordedAtIsoShort}"
 
         with(binding) {
             updateDistance(totalDistance, session.distance)

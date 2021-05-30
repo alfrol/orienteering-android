@@ -54,6 +54,7 @@ object C {
     const val DEFAULT_POLYLINE_WIDTH = 10.0f
     const val DEFAULT_POLYLINE_COLOR = R.color.primary
     const val DEFAULT_PREVIEW_TRACK_PADDING = 50
+    const val DEFAULT_GPX_FILE_NAME = "gps_sport_map_session"
 
     const val LOC_TYPE_ID = "00000000-0000-0000-0000-000000000001"
     const val WP_TYPE_ID = "00000000-0000-0000-0000-000000000002"
