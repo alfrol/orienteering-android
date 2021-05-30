@@ -40,6 +40,9 @@ interface SessionDao {
     @Query("SELECT * FROM Session WHERE _id = :id")
     fun findByIdWithLocationPoints(id: Long): Flow<SessionWithLocationPoints>
 
+    @Query("SELECT COUNT(*) FROM Session")
+    fun getSessionsCount(): Flow<Long>
+
     @Query("SELECT SUM(distance) FROM Session")
     fun getTotalDistance(): Flow<Float>
 

@@ -89,10 +89,22 @@ class MenuFragment : Fragment(R.layout.fragment_menu) {
      * Start observing the general statistics.
      */
     private fun startObserving() {
+        menuViewModel.sessionsCount.observe(viewLifecycleOwner, {
+            with(binding) {
+                progressBarTotalSessions.visibility = View.GONE
+                tvTotalSessions.text = it.toString()
+            }
+        })
         menuViewModel.totalDistance.observe(viewLifecycleOwner, {
             with(binding) {
                 progressBarTotalDistance.visibility = View.GONE
                 tvTotalDistance.text = UIUtils.formatDistance(requireContext(), it ?: 0.0f)
+            }
+        })
+        menuViewModel.checkpointCount.observe(viewLifecycleOwner, {
+            with(binding) {
+                progressBarTotalCheckpoints.visibility = View.GONE
+                tvTotalCheckpoints.text = it.toString()
             }
         })
         menuViewModel.averageDistance.observe(viewLifecycleOwner, {

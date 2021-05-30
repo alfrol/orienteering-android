@@ -17,4 +17,6 @@ class LocationPointRepository @Inject constructor(private val locationPointDao: 
 
     suspend fun deleteLocationPoints(locationPoint: LocationPoint) =
         locationPointDao.delete(locationPoint)
+
+    fun findPointCountByType(type: String) = locationPointDao.findPointCountByType(type)
 }

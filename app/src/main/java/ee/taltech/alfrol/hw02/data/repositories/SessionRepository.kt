@@ -26,6 +26,8 @@ class SessionRepository @Inject constructor(private val sessionDao: SessionDao) 
 
     fun findByIdWithLocationPoints(id: Long) = sessionDao.findByIdWithLocationPoints(id)
 
+    fun getSessionsCount() = sessionDao.getSessionsCount()
+
     fun getTotalDistance() = sessionDao.getTotalDistance()
 
     fun getAverageDistance() = sessionDao.getAverageDistance()

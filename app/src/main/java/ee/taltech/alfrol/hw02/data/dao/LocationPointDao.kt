@@ -1,10 +1,8 @@
 package ee.taltech.alfrol.hw02.data.dao
 
-import androidx.room.Dao
-import androidx.room.Delete
-import androidx.room.Insert
-import androidx.room.Update
+import androidx.room.*
 import ee.taltech.alfrol.hw02.data.model.LocationPoint
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface LocationPointDao {
@@ -17,4 +15,7 @@ interface LocationPointDao {
 
     @Delete
     suspend fun delete(locationPoint: LocationPoint)
+
+    @Query("SELECT COUNT(*) FROM location_point WHERE type = :type")
+    fun findPointCountByType(type: String): Flow<Long>
 }
