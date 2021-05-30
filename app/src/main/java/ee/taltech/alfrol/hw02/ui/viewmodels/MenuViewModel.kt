@@ -1,15 +1,15 @@
 package ee.taltech.alfrol.hw02.ui.viewmodels
 
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.asLiveData
-import androidx.lifecycle.viewModelScope
+import androidx.annotation.ColorRes
+import androidx.lifecycle.*
 import dagger.hilt.android.lifecycle.HiltViewModel
 import ee.taltech.alfrol.hw02.C
+import ee.taltech.alfrol.hw02.R
 import ee.taltech.alfrol.hw02.data.SettingsManager
 import ee.taltech.alfrol.hw02.data.repositories.LocationPointRepository
 import ee.taltech.alfrol.hw02.data.repositories.SessionRepository
 import ee.taltech.alfrol.hw02.data.repositories.UserRepository
+import ee.taltech.alfrol.hw02.ui.states.TrackWidthState
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -40,36 +40,51 @@ class MenuViewModel @Inject constructor(
     val averagePace: LiveData<Float> =
         sessionRepository.getAveragePace().asLiveData()
 
+    private var _trackWidthState = MutableLiveData<TrackWidthState>()
+    val trackWidthState: LiveData<TrackWidthState> = _trackWidthState
+
     /**
      * Log the user our.
      * Will remove the associated token and user id from the datastore.
      */
-    fun logout() {
-        viewModelScope.launch {
-            settingsManager.removeValue(SettingsManager.LOGGED_IN_USER_ID_KEY)
-            settingsManager.removeValue(SettingsManager.TOKEN_KEY)
-        }
+    fun logout() = viewModelScope.launch {
+        settingsManager.removeValue(SettingsManager.LOGGED_IN_USER_ID_KEY)
+        settingsManager.removeValue(SettingsManager.TOKEN_KEY)
     }
+
 
     /**
      * Delete the user account.
      */
-    fun deleteAccount() {
-        viewModelScope.launch {
-            settingsManager.getValue(SettingsManager.LOGGED_IN_USER_ID_KEY).firstOrNull()?.also {
-                userRepository.deleteById(it)
-                logout()
-            }
+    fun deleteAccount() = viewModelScope.launch {
+        settingsManager.getValue(SettingsManager.LOGGED_IN_USER_ID_KEY).firstOrNull()?.also {
+            userRepository.deleteById(it)
+            logout()
         }
     }
 
-    fun changeTrackColor(color: Int) {
-        viewModelScope.launch {
-            settingsManager.setValue(SettingsManager.POLYLINE_COLOR_KEY, color)
-        }
+    /**
+     * Update the track color in the datastore.
+     *
+     * @param color A new color to use when drawing polyline on the map.
+     */
+    fun saveTrackColor(@ColorRes color: Int) = viewModelScope.launch {
+        settingsManager.setValue(SettingsManager.POLYLINE_COLOR_KEY, color)
     }
 
-    fun changeTrackWidth(width: Float) {
+    /**
+     * Update the track width in the datastore.
+     *
+     * @param widthText A new width to use when drawing polyline on the map.
+     */
+    fun saveTrackWidth(widthText: String) {
+        val width: Float = runCatching {
+            widthText.toFloat()
+        }.getOrElse {
+            _trackWidthState.value = TrackWidthState(R.string.error_track_width)
+            return
+        }
+
         viewModelScope.launch {
             settingsManager.setValue(SettingsManager.POLYLINE_WIDTH_KEY, width)
         }

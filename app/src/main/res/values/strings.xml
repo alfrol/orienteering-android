@@ -48,6 +48,7 @@
     <string name="error_password_match">Passwords do not match</string>
     <string name="error_registration_failed">Could not register a new account</string>
     <string name="error_unexpected">Unexpected error</string>
+    <string name="error_track_width">Width must be a float</string>
 
     <string name="distance_meters">%d m</string>
     <string name="distance_kilometers">%.2f km</string>

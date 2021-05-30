@@ -4,7 +4,6 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.android.gms.maps.model.Polyline
 import dagger.hilt.android.lifecycle.HiltViewModel
 import ee.taltech.alfrol.hw02.C
 import ee.taltech.alfrol.hw02.R
@@ -64,23 +63,6 @@ class SessionViewModel @Inject constructor(
         viewModelScope.launch {
             _previewSession.postValue(sessionRepository.findByIdWithLocationPoints(id).first())
         }
-    }
-
-    /**
-     * Update and save polyline settings to the datastore.
-     *
-     * @param polyline Polyline containing the new width, color values to save.
-     */
-    fun savePolyline(polyline: Polyline) {
-        val color = polyline.color
-        val width = polyline.width
-
-        viewModelScope.launch {
-            settingsManager.setValue(SettingsManager.POLYLINE_COLOR_KEY, color)
-            settingsManager.setValue(SettingsManager.POLYLINE_WIDTH_KEY, width)
-        }
-
-        _polylineState.postValue(PolylineState(color, width))
     }
 
     /**
