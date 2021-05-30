@@ -6,7 +6,9 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
-import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.fragment.findNavController
 import dagger.hilt.android.AndroidEntryPoint
 import ee.taltech.alfrol.hw02.C
@@ -15,7 +17,6 @@ import ee.taltech.alfrol.hw02.data.SettingsManager
 import ee.taltech.alfrol.hw02.databinding.FragmentMenuBinding
 import ee.taltech.alfrol.hw02.ui.viewmodels.MenuViewModel
 import ee.taltech.alfrol.hw02.utils.UIUtils
-import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -27,24 +28,9 @@ class MenuFragment : Fragment(R.layout.fragment_menu) {
     private var _binding: FragmentMenuBinding? = null
     private val binding get() = _binding!!
 
+    private lateinit var backStackEntry: NavBackStackEntry
+
     private val menuViewModel: MenuViewModel by viewModels()
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-
-        val navController = findNavController()
-
-        val currentBackStackEntry = navController.currentBackStackEntry!!
-        val savedStateHandle = currentBackStackEntry.savedStateHandle
-
-        savedStateHandle.getLiveData<Boolean>(C.IS_USER_LOGGED_IN_KEY)
-            .observe(currentBackStackEntry, { isLoggedIn ->
-                if (!isLoggedIn) {
-                    val actionAuthenticate = MenuFragmentDirections.actionAuthenticate()
-                    findNavController().navigate(actionAuthenticate)
-                }
-            })
-    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -58,15 +44,21 @@ class MenuFragment : Fragment(R.layout.fragment_menu) {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        viewLifecycleOwner.lifecycleScope.launchWhenCreated {
-            val user = settingsManager.getValue(SettingsManager.LOGGED_IN_USER_ID_KEY, null).first()
-            if (user == null) {
-                val actionAuthenticate = MenuFragmentDirections.actionAuthenticate()
-                findNavController().navigate(actionAuthenticate)
+        backStackEntry = findNavController().getBackStackEntry(R.id.menuFragment)
+        backStackEntry.lifecycle.addObserver(backstackEntryLifecycleObserver)
+
+        // Listen to the current view's lifecycle events and remove the observer when destroyed.
+        viewLifecycleOwner.lifecycle.addObserver(LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_DESTROY) {
+                backStackEntry.lifecycle.removeObserver(backstackEntryLifecycleObserver)
             }
-        }
+        })
 
         with(binding) {
+            settingsButton.setOnClickListener {
+                val actionOpenSettings = MenuFragmentDirections.actionOpenSettings()
+                findNavController().navigate(actionOpenSettings)
+            }
             newSessionButtonLayout.setOnClickListener {
                 val actionStartSession = MenuFragmentDirections.actionStartSession()
                 findNavController().navigate(actionStartSession)
@@ -83,6 +75,23 @@ class MenuFragment : Fragment(R.layout.fragment_menu) {
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+    }
+
+    /**
+     * Observer for the backstack entry (current fragment) lifecycle event.s
+     * Whenever the event is [Lifecycle.Event.ON_RESUME] we want to check
+     * whether the user is still logged in.
+     */
+    private val backstackEntryLifecycleObserver = LifecycleEventObserver { _, event ->
+        if (event == Lifecycle.Event.ON_RESUME) {
+            val savedStateHandle = backStackEntry.savedStateHandle
+            val isUserLoggedIn = savedStateHandle.get<Boolean>(C.IS_USER_LOGGED_IN_KEY)
+
+            if (isUserLoggedIn != true) {
+                val authAction = MenuFragmentDirections.actionAuthenticate()
+                findNavController().navigate(authAction)
+            }
+        }
     }
 
     /**

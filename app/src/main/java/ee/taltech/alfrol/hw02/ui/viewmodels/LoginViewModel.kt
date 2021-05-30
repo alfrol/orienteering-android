@@ -12,10 +12,11 @@ import ee.taltech.alfrol.hw02.C
 import ee.taltech.alfrol.hw02.R
 import ee.taltech.alfrol.hw02.api.RestHandler
 import ee.taltech.alfrol.hw02.data.SettingsManager
+import ee.taltech.alfrol.hw02.data.model.User
 import ee.taltech.alfrol.hw02.data.repositories.UserRepository
 import ee.taltech.alfrol.hw02.ui.states.AuthenticationResult
 import ee.taltech.alfrol.hw02.ui.states.LoginFormState
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 import javax.inject.Inject
@@ -47,12 +48,19 @@ class LoginViewModel @Inject constructor(
 
                 // Save user id and API token to the datastore for later use.
                 viewModelScope.launch {
-                    // TODO: This assumes the user is already in the database
-                    //  but if someone tries to log in from other phone, then this
-                    //  will not work since user will not be in the database
-                    val user = userRepository.findByEmail(email).first()
+                    val user = userRepository.findByEmail(email).firstOrNull()
+                    // FIXME: This is ugly
+                    val id: Long = user?.id
+                        ?: userRepository.insertUser(
+                            User(
+                                firstName = "-",
+                                lastName = "-",
+                                email = email
+                            )
+                        )
+
                     settingsManager.setValue(SettingsManager.TOKEN_KEY, token)
-                    settingsManager.setValue(SettingsManager.LOGGED_IN_USER_ID_KEY, user.id)
+                    settingsManager.setValue(SettingsManager.LOGGED_IN_USER_ID_KEY, id)
 
                     _loginResult.postValue(AuthenticationResult(success = true))
                 }

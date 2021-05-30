@@ -58,4 +58,11 @@ class SettingsManager @Inject constructor(@ApplicationContext context: Context) 
             preferences[key] = value
         }
     }
+
+    /**
+     * Remove the value associated to the specified key.
+     */
+    suspend fun <T> removeValue(key: Preferences.Key<T>) = datastore.edit { preferences ->
+        preferences.remove(key)
+    }
 }

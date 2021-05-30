@@ -11,13 +11,20 @@
         android:label="MenuFragment" >
         <action
             android:id="@+id/action_authenticate"
-            app:destination="@id/navigation" />
+            app:destination="@id/navigation"
+            app:popUpTo="@id/menuFragment" />
         <action
             android:id="@+id/action_start_session"
-            app:destination="@id/sessionFragment" />
+            app:destination="@id/sessionFragment"
+            app:popUpTo="@id/menuFragment" />
         <action
             android:id="@+id/action_view_history"
-            app:destination="@id/historyFragment" />
+            app:destination="@id/historyFragment"
+            app:popUpTo="@id/menuFragment" />
+        <action
+            android:id="@+id/action_open_settings"
+            app:destination="@id/settingsDialogFragment"
+            app:popUpTo="@id/menuFragment" />
     </fragment>
     <navigation android:id="@+id/navigation"
         app:startDestination="@id/welcomeFragment">
@@ -72,6 +79,12 @@
         tools:layout="@layout/fragment_history" >
         <action
             android:id="@+id/action_preview_session"
-            app:destination="@id/sessionFragment" />
+            app:destination="@id/sessionFragment"
+            app:popUpTo="@id/historyFragment" />
     </fragment>
+    <dialog
+        android:id="@+id/settingsDialogFragment"
+        android:name="ee.taltech.alfrol.hw02.ui.fragments.SettingsDialogFragment"
+        android:label="dialog_fragment_settings"
+        tools:layout="@layout/dialog_fragment_settings" />
 </navigation>

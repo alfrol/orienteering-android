@@ -6,11 +6,13 @@ import javax.inject.Inject
 
 class UserRepository @Inject constructor(private val userDao: UserDao) {
 
-    suspend fun insertUser(user: User) = userDao.insert(user)
+    suspend fun insertUser(user: User): Long = userDao.insert(user)
 
     suspend fun updateUser(user: User) = userDao.update(user)
 
     suspend fun deleteUser(user: User) = userDao.delete(user)
 
     fun findByEmail(email: String) = userDao.findByEmail(email)
+
+    fun deleteById(id: Long) = userDao.deleteUserById(id)
 }

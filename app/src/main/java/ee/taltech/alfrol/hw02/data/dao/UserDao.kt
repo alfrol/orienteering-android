@@ -18,4 +18,7 @@ interface UserDao {
 
     @Query("SELECT * FROM User WHERE email = :email")
     fun findByEmail(email: String): Flow<User>
+
+    @Query("DELETE FROM User WHERE _id = :id")
+    fun deleteUserById(id: Long)
 }
