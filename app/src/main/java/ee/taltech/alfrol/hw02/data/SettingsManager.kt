@@ -26,7 +26,9 @@ class SettingsManager @Inject constructor(@ApplicationContext context: Context) 
         val LOCATION_UPDATE_FASTEST_INTERVAL_LEY =
             longPreferencesKey("location_update_fastest_interval")
         val POLYLINE_WIDTH_KEY = floatPreferencesKey("polyline_width")
-        val POLYLINE_COLOR_KEY = intPreferencesKey("polyline_color")
+        val POLYLINE_SLOW_COLOR_KEY = intPreferencesKey("polyline_color_slow")
+        val POLYLINE_NORMAL_COLOR_KEY = intPreferencesKey("polyline_color_normal")
+        val POLYLINE_FAST_COLOR_KEY = intPreferencesKey("polyline_color_fast")
         val ACTIVE_SESSION_ID_KEY = longPreferencesKey("active_session_id")
     }
 

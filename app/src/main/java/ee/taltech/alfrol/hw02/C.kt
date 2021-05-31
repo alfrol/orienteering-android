@@ -43,18 +43,19 @@ object C {
     const val ACTION_START_CHECKPOINT_STOPWATCH = "START_CHECKPOINT_STOPWATCH"
     const val ACTION_START_WAYPOINT_STOPWATCH = "START_WAYPOINT_STOPWATCH"
 
-    const val STOPWATCH_TYPE_KEY = "stopwatch_type"
-    const val LOCATION_REQUEST_KEY = "location_request"
-    const val LOCATION_ACTION_COMMAND = "location_action_command"
-
     const val DEFAULT_LOCATION_UPDATE_INTERVAL = 10000L
     const val DEFAULT_LOCATION_UPDATE_FASTEST_INTERVAL = 5000L
     const val DEFAULT_MAP_ZOOM = 17.0f
     const val DEFAULT_MAP_CAMERA_ANIMATION_DURATION = 2000
     const val DEFAULT_POLYLINE_WIDTH = 10.0f
-    const val DEFAULT_POLYLINE_COLOR = R.color.primary
+    const val DEFAULT_POLYLINE_SLOW_COLOR = R.color.primary_light
+    const val DEFAULT_POLYLINE_NORMAL_COLOR = R.color.primary
+    const val DEFAULT_POLYLINE_FAST_COLOR = R.color.secondary
     const val DEFAULT_PREVIEW_TRACK_PADDING = 150
     const val DEFAULT_GPX_FILE_NAME = "gps_sport_map_session"
+
+    const val AVERAGE_WALKING_SPEED = 1.38889f
+    const val AVERAGE_JOGGING_SPEED = 2.77778f
 
     const val LOC_TYPE_ID = "00000000-0000-0000-0000-000000000001"
     const val WP_TYPE_ID = "00000000-0000-0000-0000-000000000002"

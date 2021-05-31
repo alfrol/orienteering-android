@@ -4,6 +4,12 @@ import androidx.annotation.ColorRes
 
 data class PolylineState(
     @ColorRes
-    val color: Int,
+    val colorSlow: Int,
+
+    @ColorRes
+    val colorNormal: Int,
+
+    @ColorRes
+    val colorFast: Int,
     val width: Float
 )

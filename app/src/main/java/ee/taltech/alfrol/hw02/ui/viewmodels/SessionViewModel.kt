@@ -1,5 +1,6 @@
 package ee.taltech.alfrol.hw02.ui.viewmodels
 
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -36,16 +37,31 @@ class SessionViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            val color = settingsManager.getValue(
-                SettingsManager.POLYLINE_COLOR_KEY,
-                C.DEFAULT_POLYLINE_COLOR
+            val colorSlow = settingsManager.getValue(
+                SettingsManager.POLYLINE_SLOW_COLOR_KEY,
+                C.DEFAULT_POLYLINE_SLOW_COLOR
+            ).first()
+            val colorNormal = settingsManager.getValue(
+                SettingsManager.POLYLINE_NORMAL_COLOR_KEY,
+                C.DEFAULT_POLYLINE_NORMAL_COLOR
+            ).first()
+            val colorFast = settingsManager.getValue(
+                SettingsManager.POLYLINE_FAST_COLOR_KEY,
+                C.DEFAULT_POLYLINE_FAST_COLOR
             ).first()
             val width = settingsManager.getValue(
                 SettingsManager.POLYLINE_WIDTH_KEY,
                 C.DEFAULT_POLYLINE_WIDTH
             ).first()
 
-            _polylineState.postValue(PolylineState(color!!, width!!))
+            _polylineState.postValue(
+                PolylineState(
+                    colorSlow!!,
+                    colorNormal!!,
+                    colorFast!!,
+                    width!!
+                )
+            )
 
             settingsManager.getValue(SettingsManager.ACTIVE_SESSION_ID_KEY).first()?.let {
                 activeSession = sessionRepository.findById(it).first()

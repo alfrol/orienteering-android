@@ -77,7 +77,7 @@ class SettingsDialogFragment : DialogFragment() {
         sessionViewModel.polylineState.observe(viewLifecycleOwner, {
             val state = it ?: return@observe
             with(binding) {
-                when (state.color) {
+                when (state.colorSlow) {
                     R.color.secondary -> rbColorSecondary.isChecked = true
                     R.color.red -> rbColorRed.isChecked = true
                     R.color.grey -> rbColorGrey.isChecked = true

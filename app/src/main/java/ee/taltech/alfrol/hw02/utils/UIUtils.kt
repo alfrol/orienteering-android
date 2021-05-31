@@ -4,10 +4,7 @@ import android.content.Context
 import android.text.Editable
 import android.text.TextWatcher
 import android.widget.Toast
-import androidx.annotation.ColorRes
 import androidx.annotation.StringRes
-import androidx.core.content.ContextCompat
-import com.google.android.gms.maps.model.PolylineOptions
 import ee.taltech.alfrol.hw02.R
 import java.time.Instant
 import java.time.OffsetDateTime
@@ -48,19 +45,6 @@ object UIUtils {
             }
         }
     }
-
-    /**
-     * Construct a [PolylineOptions] with the given presets.
-     *
-     * @param context Context to use for color extraction.
-     * @param color Color to apply.
-     * @param width Width to apply.
-     */
-    fun getPolylineOptions(context: Context, @ColorRes color: Int, width: Float) =
-        PolylineOptions().apply {
-            color(ContextCompat.getColor(context, color))
-            width(width)
-        }
 
     /**
      * Get the correct formatted string for the given distance value.

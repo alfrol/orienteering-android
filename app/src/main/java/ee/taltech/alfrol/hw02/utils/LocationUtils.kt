@@ -4,15 +4,20 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.location.Location
+import androidx.annotation.ColorRes
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import androidx.navigation.NavDeepLinkBuilder
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.PolylineOptions
 import ee.taltech.alfrol.hw02.C
 import ee.taltech.alfrol.hw02.R
 import ee.taltech.alfrol.hw02.data.model.LocationPoint
 import ee.taltech.alfrol.hw02.service.LocationService
+import ee.taltech.alfrol.hw02.ui.states.PolylineState
 import java.util.concurrent.TimeUnit
+import kotlin.math.abs
 
 object LocationUtils {
 
@@ -116,6 +121,44 @@ object LocationUtils {
             time = locationPoint.recordedAt
             altitude = locationPoint.altitude
             accuracy = locationPoint.accuracy
+        }
+
+    /**
+     * Get the color for the track segment based on the pace between two locations.
+     *
+     * @param options [PolylineState] object with coloring options.
+     * @param loc1 First location point.
+     * @param loc2 Second location point.
+     */
+    fun getPolylineColor(options: PolylineState, loc1: Location, loc2: Location): Int {
+        val duration = abs(loc2.time - loc1.time)
+        val distance = calculateDistance(loc1, loc2)
+        val speed = distance / TimeUnit.MILLISECONDS.toSeconds(duration)
+
+        // We check based on the speed in m/s because the pace might get very small
+        return when {
+            speed <= C.AVERAGE_WALKING_SPEED -> {
+                options.colorSlow
+            }
+            speed <= C.AVERAGE_JOGGING_SPEED -> {
+                options.colorNormal
+            }
+            else -> {
+                options.colorFast
+            }
+        }
+    }
+
+    /**
+     * Construct a [PolylineOptions] with the given presets.
+     *
+     * @param color Color to apply.
+     * @param width Width to apply.
+     */
+    fun getPolylineOptions(context: Context, @ColorRes color: Int, width: Float) =
+        PolylineOptions().apply {
+            color(ContextCompat.getColor(context, color))
+            width(width)
         }
 
     /**

@@ -84,9 +84,13 @@ class SessionFragment : Fragment(R.layout.fragment_session),
     private var gpxFileName = C.DEFAULT_GPX_FILE_NAME
 
     private var map: GoogleMap? = null
-    private var polylineOptions: PolylineOptions = PolylineOptions()
-    private var polyline: Polyline? = null
-    private var polylineState = PolylineState(C.DEFAULT_POLYLINE_COLOR, C.DEFAULT_POLYLINE_WIDTH)
+    private var polylineState = PolylineState(
+        C.DEFAULT_POLYLINE_SLOW_COLOR,
+        C.DEFAULT_POLYLINE_NORMAL_COLOR,
+        C.DEFAULT_POLYLINE_FAST_COLOR,
+        C.DEFAULT_POLYLINE_WIDTH
+    )
+    private var polylines: MutableList<Polyline> = mutableListOf()
     private var waypointMarker: Marker? = null
 
     private var pathPoints: MutableList<Location> = mutableListOf()
@@ -152,10 +156,6 @@ class SessionFragment : Fragment(R.layout.fragment_session),
         super.onResume()
         binding.mapView.onResume()
 
-        if (isTracking) {
-            addAllPathPoints()
-        }
-
         if (isCompassEnabled) {
             compassListener.startListening()
         }
@@ -203,10 +203,13 @@ class SessionFragment : Fragment(R.layout.fragment_session),
 
             if (PermissionUtils.hasLocationPermission(requireContext())) {
                 map?.isMyLocationEnabled = true
-                // When map is ready wait for 1 second and navigate to the current location
-                lifecycleScope.launchWhenCreated {
-                    delay(1000L)
-                    startLocationService(C.ACTION_GET_CURRENT_LOCATION)
+
+                if (!isTracking) {
+                    // When map is ready wait for 1 second and navigate to the current location
+                    lifecycleScope.launchWhenCreated {
+                        delay(1000L)
+                        startLocationService(C.ACTION_GET_CURRENT_LOCATION)
+                    }
                 }
             }
 
@@ -279,7 +282,9 @@ class SessionFragment : Fragment(R.layout.fragment_session),
      */
     private fun startObserving() {
         // Polyline is needed for both view mode and session mode so observe it in any case.
-        sessionViewModel.polylineState.observe(viewLifecycleOwner, polylineStateObserver)
+        sessionViewModel.polylineState.observe(viewLifecycleOwner, {
+            it?.let { state -> polylineState = state }
+        })
 
         if (args.isPreview) {
             // Only observe the preview session in view mode besides the polyline state.
@@ -443,24 +448,15 @@ class SessionFragment : Fragment(R.layout.fragment_session),
     }
 
     /**
-     * Observer for changes in polyline settings.
-     */
-    private val polylineStateObserver = Observer<PolylineState> {
-        it?.let { state ->
-            polylineState = state
-            polylineOptions = UIUtils.getPolylineOptions(requireContext(), state.color, state.width)
-            polyline?.apply {
-                width = state.width
-                color = state.color
-            }
-        }
-    }
-
-    /**
      * Observer for preview session livedata.
      */
     private val previewSessionObserver = Observer<SessionWithLocationPoints> {
         val session = it.session
+
+        // To prevent adding all of those twice if the value changes in a short period of time
+        pathPoints.clear()
+        checkpoints.clear()
+        polylines.forEach { p -> p.remove() }.also { polylines.clear() }
 
         // Save it here in case the user needs to save the file
         gpxFileName = "${session.name.replace(" ", "-")}_${session.recordedAtIsoShort}"
@@ -558,27 +554,28 @@ class SessionFragment : Fragment(R.layout.fragment_session),
         if (!isTracking || pathPoints.isEmpty()) {
             return
         }
+
         val lastPathPoint = pathPoints.last()
+        if (!args.isPreview && isFollowingDevice) {
+            // If following the device then always keep the last path point centered.
+            navigateToCurrentLocation(lastPathPoint)
+        }
+
         if (pathPoints.size == 1) {
             addMarker(lastPathPoint, R.drawable.ic_start_marker)
             return
         }
 
-        if (polyline != null) {
-            polyline!!.remove()
-        }
-
         val preLastPathPoint = pathPoints[pathPoints.lastIndex - 1]
         val latLngLast = LatLng(lastPathPoint.latitude, lastPathPoint.longitude)
         val latLngPreLast = LatLng(preLastPathPoint.latitude, preLastPathPoint.longitude)
+        val color = LocationUtils.getPolylineColor(polylineState, lastPathPoint, preLastPathPoint)
 
-        polylineOptions.add(latLngPreLast).add(latLngLast)
-        polyline = map?.addPolyline(polylineOptions)
-
-        // If following the device then always keep the last path point centered.
-        if (!args.isPreview && isFollowingDevice) {
-            navigateToCurrentLocation(lastPathPoint)
-        }
+        val polylineOptions =
+            LocationUtils.getPolylineOptions(requireContext(), color, polylineState.width)
+                .add(latLngPreLast)
+                .add(latLngLast)
+        map?.addPolyline(polylineOptions)?.also { polylines.add(it) }
     }
 
     /**
@@ -589,25 +586,35 @@ class SessionFragment : Fragment(R.layout.fragment_session),
             return
         }
 
-        if (polyline != null) {
-            polyline!!.remove()
-        }
-
-        polylineOptions =
-            UIUtils.getPolylineOptions(
-                requireContext(),
-                polylineState.color,
-                polylineState.width
-            )
-        polylineOptions.addAll(LocationUtils.mapLocationToLatLng(pathPoints))
-        polyline = map?.addPolyline(polylineOptions)
-        addMarker(pathPoints.first(), R.drawable.ic_start_marker)
-
         if (!args.isPreview && isFollowingDevice) {
             navigateToCurrentLocation(pathPoints.last())
         } else if (args.isPreview) {
             addMarker(pathPoints.last(), R.drawable.ic_finish_marker)
         }
+
+        if (pathPoints.size < 2) {
+            return
+        }
+
+        // Remove all previous polylines if present
+        polylines.forEach { it.remove() }.also { polylines.clear() }
+
+        for (i in 1 until pathPoints.lastIndex) {
+            val lastPathPoint = pathPoints[i]
+            val preLastPathPoint = pathPoints[i - 1]
+            val latLngLast = LatLng(lastPathPoint.latitude, lastPathPoint.longitude)
+            val latLngPreLast = LatLng(preLastPathPoint.latitude, preLastPathPoint.longitude)
+            val color =
+                LocationUtils.getPolylineColor(polylineState, pathPoints[i], pathPoints[i - 1])
+
+            val polylineOptions =
+                LocationUtils.getPolylineOptions(requireContext(), color, polylineState.width)
+                    .add(latLngPreLast)
+                    .add(latLngLast)
+            map?.addPolyline(polylineOptions)?.also { polylines.add(it) }
+        }
+
+        addMarker(pathPoints.first(), R.drawable.ic_start_marker)
     }
 
     /**

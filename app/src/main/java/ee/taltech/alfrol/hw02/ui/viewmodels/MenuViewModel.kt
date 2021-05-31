@@ -69,7 +69,7 @@ class MenuViewModel @Inject constructor(
      * @param color A new color to use when drawing polyline on the map.
      */
     fun saveTrackColor(@ColorRes color: Int) = viewModelScope.launch {
-        settingsManager.setValue(SettingsManager.POLYLINE_COLOR_KEY, color)
+        settingsManager.setValue(SettingsManager.POLYLINE_SLOW_COLOR_KEY, color)
     }
 
     /**
