@@ -108,7 +108,7 @@ class SessionFragment : Fragment(R.layout.fragment_session),
         if (args.isPreview) {
             gpxExportLauncher =
                 registerForActivityResult(CreateDocumentContract()) {
-                    GpxConverter.save(requireContext(), it, pathPoints)
+                    GpxConverter.save(requireContext(), it, pathPoints, checkpoints)
                 }
         }
 
