@@ -7,13 +7,12 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.view.animation.Animation
-import android.view.animation.AnimationUtils
 import android.view.animation.RotateAnimation
 import android.widget.TextView
 import androidx.activity.result.ActivityResultLauncher
 import androidx.annotation.DrawableRes
 import androidx.appcompat.app.AlertDialog
+import androidx.coordinatorlayout.widget.CoordinatorLayout
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
@@ -61,19 +60,6 @@ class SessionFragment : Fragment(R.layout.fragment_session),
     private val args: SessionFragmentArgs by navArgs()
     private val sessionViewModel: SessionViewModel by viewModels()
 
-    private val openSettings: Animation by lazy {
-        AnimationUtils.loadAnimation(requireContext(), R.anim.settings_button_open)
-    }
-    private val closeSettings: Animation by lazy {
-        AnimationUtils.loadAnimation(requireContext(), R.anim.settings_button_close)
-    }
-    private val fromTop: Animation by lazy {
-        AnimationUtils.loadAnimation(requireContext(), R.anim.from_top)
-    }
-    private val toTop: Animation by lazy {
-        AnimationUtils.loadAnimation(requireContext(), R.anim.to_top)
-    }
-
     private lateinit var compassListener: CompassListener
     private lateinit var bottomSheetBehavior: BottomSheetBehavior<View>
     private lateinit var gpxExportLauncher: ActivityResultLauncher<String>
@@ -82,7 +68,6 @@ class SessionFragment : Fragment(R.layout.fragment_session),
     private var isFollowingDevice = true
     private var currentCompassAngle = 0.0f
     private var isCompassEnabled = false
-    private var areSettingsOpen = false
     private var gpxFileName = C.DEFAULT_GPX_FILE_NAME
 
     private var map: GoogleMap? = null
@@ -135,14 +120,14 @@ class SessionFragment : Fragment(R.layout.fragment_session),
                 gpxExportLauncher.launch(gpxFileName)
             }
             fabSessionStart.setOnClickListener(onClickSessionStart)
-            fabSettings.setOnClickListener(onClickSettings)
-            fabCenterMapView.setOnClickListener(onClickCenterMapView)
+            fabCurrentLocation.setOnClickListener(onClickCenterMapView)
             fabResetMapView.setOnClickListener {
                 resetCameraRotation()
             }
             fabToggleCompass.setOnClickListener {
                 sessionViewModel.toggleCompass()
             }
+            fabChangeMapType.setOnClickListener(onClickToggleMapType)
             fabAddCheckpoint.setOnClickListener(onClickAddCheckpoint)
             fabAddWaypoint.setOnClickListener(onClickAddWaypoint)
 
@@ -291,6 +276,9 @@ class SessionFragment : Fragment(R.layout.fragment_session),
         sessionViewModel.polylineState.observe(viewLifecycleOwner, {
             it?.let { state -> polylineState = state }
         })
+        sessionViewModel.mapType.observe(viewLifecycleOwner, {
+            map?.mapType = it ?: GoogleMap.MAP_TYPE_NORMAL
+        })
 
         if (args.isPreview) {
             // Only observe the preview session in view mode besides the polyline state.
@@ -352,7 +340,11 @@ class SessionFragment : Fragment(R.layout.fragment_session),
         with(binding) {
             fabExportGpx.visibility = View.VISIBLE
             fabSessionStart.visibility = View.GONE
-            fabSettings.visibility = View.GONE
+            fabCurrentLocation.visibility = View.GONE
+            fabToggleCompass.visibility = View.GONE
+
+            // GPX export button is in the same position as session start button
+            (divider2.layoutParams as CoordinatorLayout.LayoutParams).anchorId = R.id.fab_export_gpx
 
             bottomSheetBehavior.isDraggable = false
         }
@@ -405,25 +397,6 @@ class SessionFragment : Fragment(R.layout.fragment_session),
     }
 
     /**
-     * Listener for settings button.
-     */
-    private val onClickSettings = View.OnClickListener {
-        when (areSettingsOpen) {
-            true -> {
-                setSettingsVisibility(View.INVISIBLE)
-                setSettingsAnimation(toTop)
-                it.startAnimation(closeSettings)
-            }
-            false -> {
-                setSettingsVisibility(View.VISIBLE)
-                setSettingsAnimation(fromTop)
-                it.startAnimation(openSettings)
-            }
-        }
-        areSettingsOpen = !areSettingsOpen
-    }
-
-    /**
      * Listener for center view button.
      */
     private val onClickCenterMapView = View.OnClickListener {
@@ -432,6 +405,17 @@ class SessionFragment : Fragment(R.layout.fragment_session),
         } else {
             PermissionUtils.requestLocationPermission(this)
         }
+    }
+
+    /**
+     * Listener for map type changing button.
+     */
+    private val onClickToggleMapType = View.OnClickListener {
+        val newType = when (map?.mapType) {
+            GoogleMap.MAP_TYPE_NORMAL -> GoogleMap.MAP_TYPE_SATELLITE
+            else -> GoogleMap.MAP_TYPE_NORMAL
+        }
+        sessionViewModel.changeMapType(newType)
     }
 
     /**
@@ -758,33 +742,6 @@ class SessionFragment : Fragment(R.layout.fragment_session),
 
             fabAddCheckpoint.visibility = visibility
             fabAddWaypoint.visibility = visibility
-        }
-    }
-
-    /**
-     * Set the visibility of settings buttons.
-     */
-    private fun setSettingsVisibility(visibility: Int) {
-        with(binding) {
-            fabCenterMapView.visibility = visibility
-            fabCenterMapView.isEnabled = visibility == View.VISIBLE
-
-            fabResetMapView.visibility = visibility
-            fabResetMapView.isEnabled = visibility == View.VISIBLE
-
-            fabToggleCompass.visibility = visibility
-            fabToggleCompass.isEnabled = visibility == View.VISIBLE
-        }
-    }
-
-    /**
-     * Animate the settings buttons when opened/closed.
-     */
-    private fun setSettingsAnimation(animation: Animation) {
-        with(binding) {
-            fabCenterMapView.startAnimation(animation)
-            fabResetMapView.startAnimation(animation)
-            fabToggleCompass.startAnimation(animation)
         }
     }
 

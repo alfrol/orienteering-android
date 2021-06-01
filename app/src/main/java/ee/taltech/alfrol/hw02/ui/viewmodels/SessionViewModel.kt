@@ -1,6 +1,5 @@
 package ee.taltech.alfrol.hw02.ui.viewmodels
 
-import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -15,6 +14,7 @@ import ee.taltech.alfrol.hw02.data.repositories.SessionRepository
 import ee.taltech.alfrol.hw02.ui.states.CompassState
 import ee.taltech.alfrol.hw02.ui.states.PolylineState
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -32,6 +32,9 @@ class SessionViewModel @Inject constructor(
 
     private var _previewSession = MutableLiveData<SessionWithLocationPoints>()
     val previewSession: LiveData<SessionWithLocationPoints> = _previewSession
+
+    private var _mapType = MutableLiveData<Int>()
+    val mapType: LiveData<Int> = _mapType
 
     private var activeSession: Session? = null
 
@@ -63,8 +66,11 @@ class SessionViewModel @Inject constructor(
                 )
             )
 
-            settingsManager.getValue(SettingsManager.ACTIVE_SESSION_ID_KEY).first()?.let {
+            settingsManager.getValue(SettingsManager.ACTIVE_SESSION_ID_KEY).firstOrNull()?.let {
                 activeSession = sessionRepository.findById(it).first()
+            }
+            settingsManager.getValue(SettingsManager.MAP_TYPE_KEY).firstOrNull()?.let {
+                _mapType.value = it
             }
         }
     }
@@ -94,5 +100,13 @@ class SessionViewModel @Inject constructor(
                 )
             }
         } ?: CompassState(isEnabled = true, compassButtonIcon = R.drawable.ic_compass_off)
+    }
+
+    /**
+     * Toggle the map style.
+     */
+    fun changeMapType(mapType: Int) = viewModelScope.launch {
+        _mapType.postValue(mapType)
+        settingsManager.setValue(SettingsManager.MAP_TYPE_KEY, mapType)
     }
 }

@@ -53,47 +53,27 @@
         app:tint="@color/white" />
 
     <View
-        android:id="@+id/divider1"
+        android:id="@+id/divider2"
         android:layout_width="16dp"
-        android:layout_height="16dp"
+        android:layout_height="8dp"
         android:layout_gravity="bottom|center_horizontal"
         app:layout_anchor="@id/fab_session_start"
         app:layout_anchorGravity="bottom|center_horizontal" />
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/fab_settings"
+        android:id="@+id/fab_change_map_type"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginStart="24dp"
+        android:layout_marginEnd="24dp"
         android:clickable="true"
         android:focusable="true"
-        android:src="@drawable/ic_settings"
+        android:scaleX="0.8"
+        android:scaleY="0.8"
+        android:src="@drawable/ic_satellite"
         android:tint="@color/white"
-        app:backgroundTint="@color/light_grey"
-        app:borderWidth="0dp"
-        app:layout_anchor="@id/divider1"
-        app:layout_anchorGravity="bottom|center_horizontal"
-        app:rippleColor="@color/grey_transparent"
-        app:tint="@color/dark_grey" />
-
-    <View
-        android:id="@+id/divider2"
-        android:layout_width="16dp"
-        android:layout_height="8dp"
-        android:layout_gravity="bottom|center_horizontal"
-        app:layout_anchor="@id/fab_settings"
-        app:layout_anchorGravity="bottom|center_horizontal" />
-
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/fab_center_map_view"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom|center_horizontal"
-        android:clickable="true"
-        android:focusable="true"
-        android:src="@drawable/ic_my_location"
-        android:tint="@color/white"
-        android:visibility="invisible"
+        android:visibility="visible"
         app:backgroundTint="@color/primary"
         app:borderWidth="0dp"
         app:layout_anchor="@id/divider2"
@@ -106,7 +86,7 @@
         android:layout_width="16dp"
         android:layout_height="8dp"
         android:layout_gravity="bottom|center_horizontal"
-        app:layout_anchor="@id/fab_center_map_view"
+        app:layout_anchor="@id/fab_change_map_type"
         app:layout_anchorGravity="bottom|center_horizontal" />
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
@@ -114,11 +94,15 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginStart="24dp"
+        android:layout_marginEnd="24dp"
         android:clickable="true"
         android:focusable="true"
+        android:scaleX="0.8"
+        android:scaleY="0.8"
         android:src="@drawable/ic_map_north"
         android:tint="@color/white"
-        android:visibility="invisible"
+        android:visibility="visible"
         app:backgroundTint="@color/primary"
         app:borderWidth="0dp"
         app:layout_anchor="@id/divider3"
@@ -139,14 +123,47 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginStart="24dp"
+        android:layout_marginEnd="24dp"
         android:clickable="true"
         android:focusable="true"
+        android:scaleX="0.8"
+        android:scaleY="0.8"
         android:src="@drawable/ic_compass_on"
         android:tint="@color/white"
-        android:visibility="invisible"
+        android:visibility="visible"
         app:backgroundTint="@color/primary"
         app:borderWidth="0dp"
         app:layout_anchor="@id/divider4"
+        app:layout_anchorGravity="bottom|center_horizontal"
+        app:rippleColor="@color/grey_transparent"
+        app:tint="@color/white" />
+
+    <View
+        android:id="@+id/divider5"
+        android:layout_width="16dp"
+        android:layout_height="8dp"
+        android:layout_gravity="bottom|center_horizontal"
+        app:layout_anchor="@id/fab_toggle_compass"
+        app:layout_anchorGravity="bottom|center_horizontal" />
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fab_current_location"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginStart="24dp"
+        android:layout_marginEnd="24dp"
+        android:clickable="true"
+        android:focusable="true"
+        android:scaleX="0.8"
+        android:scaleY="0.8"
+        android:src="@drawable/ic_my_location"
+        android:tint="@color/white"
+        android:visibility="visible"
+        app:backgroundTint="@color/primary"
+        app:borderWidth="0dp"
+        app:layout_anchor="@id/divider5"
         app:layout_anchorGravity="bottom|center_horizontal"
         app:rippleColor="@color/grey_transparent"
         app:tint="@color/white" />

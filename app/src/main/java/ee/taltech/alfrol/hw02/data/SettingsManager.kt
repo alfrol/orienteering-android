@@ -30,6 +30,7 @@ class SettingsManager @Inject constructor(@ApplicationContext context: Context) 
         val POLYLINE_NORMAL_COLOR_KEY = intPreferencesKey("polyline_color_normal")
         val POLYLINE_FAST_COLOR_KEY = intPreferencesKey("polyline_color_fast")
         val ACTIVE_SESSION_ID_KEY = longPreferencesKey("active_session_id")
+        val MAP_TYPE_KEY = intPreferencesKey("map_type")
     }
 
     private val datastore = context.datastore
