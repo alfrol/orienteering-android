@@ -122,6 +122,7 @@
         android:padding="5dp"
         android:selectAllOnFocus="true"
         android:textAlignment="center"
+        android:textColor="@color/black"
         android:textColorHint="@color/dark_grey"
         android:textSize="18sp"
         app:layout_constraintBottom_toBottomOf="@+id/textView1"
