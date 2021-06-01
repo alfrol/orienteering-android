@@ -1,6 +1,7 @@
 package ee.taltech.alfrol.hw02.ui.viewmodels
 
 import androidx.annotation.ColorRes
+import androidx.datastore.preferences.core.Preferences
 import androidx.lifecycle.*
 import dagger.hilt.android.lifecycle.HiltViewModel
 import ee.taltech.alfrol.hw02.C
@@ -68,8 +69,8 @@ class MenuViewModel @Inject constructor(
      *
      * @param color A new color to use when drawing polyline on the map.
      */
-    fun saveTrackColor(@ColorRes color: Int) = viewModelScope.launch {
-        settingsManager.setValue(SettingsManager.POLYLINE_SLOW_COLOR_KEY, color)
+    fun saveTrackColor(key: Preferences.Key<Int>, @ColorRes color: Int) = viewModelScope.launch {
+        settingsManager.setValue(key, color)
     }
 
     /**

@@ -29,7 +29,10 @@
     <string name="text_stopping_confirmation">Are you sure you want to stop the session? You will not be able to start it again.</string>
     <string name="text_session_ended">Session has been ended. You can now view it in the history.</string>
     <string name="text_session_removal_confirmation">Are you sure you want to remove this session? This action is irreversible.</string>
-    <string name="text_track_color">Track color</string>
+    <string name="text_track_color">Track segment colors</string>
+    <string name="text_track_color_slow">&lt;= 1.3 m/s</string>
+    <string name="text_track_color_normal">&lt;= 2.7 m/s</string>
+    <string name="text_track_color_fast">&gt; 2.7 m/s</string>
     <string name="text_track_width">Track width</string>
     <string name="text_logout">Logout</string>
     <string name="text_delete_account">Delete account</string>
@@ -55,4 +58,14 @@
     <string name="duration_millis">%1$02d:%2$02d:%3$02d.%4$02d</string>
     <string name="duration">%1$02d:%2$02d:%3$02d</string>
     <string name="pace">%.2f min/km</string>
+
+    <string-array name="track_color_choice">
+        <item>Light blue</item>
+        <item>Blue</item>
+        <item>Dark blue</item>
+        <item>Light grey</item>
+        <item>Grey</item>
+        <item>Dark grey</item>
+        <item>Red</item>
+    </string-array>
 </resources>

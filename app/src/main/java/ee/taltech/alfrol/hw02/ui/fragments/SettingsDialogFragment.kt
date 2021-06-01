@@ -4,22 +4,29 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
+import com.google.android.material.textview.MaterialTextView
 import dagger.hilt.android.AndroidEntryPoint
 import ee.taltech.alfrol.hw02.C
 import ee.taltech.alfrol.hw02.R
+import ee.taltech.alfrol.hw02.data.SettingsManager
 import ee.taltech.alfrol.hw02.databinding.DialogFragmentSettingsBinding
 import ee.taltech.alfrol.hw02.ui.viewmodels.MenuViewModel
 import ee.taltech.alfrol.hw02.ui.viewmodels.SessionViewModel
 import ee.taltech.alfrol.hw02.utils.UIUtils
 
 @AndroidEntryPoint
-class SettingsDialogFragment : DialogFragment() {
+class SettingsDialogFragment : DialogFragment(), AdapterView.OnItemSelectedListener {
 
     private var _binding: DialogFragmentSettingsBinding? = null
     private val binding get() = _binding!!
+
+    private lateinit var adapter: ArrayAdapter<CharSequence>
 
     private val menuViewModel: MenuViewModel by viewModels()
     private val sessionViewModel: SessionViewModel by viewModels()
@@ -35,18 +42,29 @@ class SettingsDialogFragment : DialogFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        val adapter = ArrayAdapter.createFromResource(
+            requireContext(),
+            R.array.track_color_choice,
+            android.R.layout.simple_spinner_item
+        ).apply {
+            setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        }.also {
+            this.adapter = it
+        }
+
         with(binding) {
-            rbColorPrimary.setOnClickListener {
-                menuViewModel.saveTrackColor(R.color.primary)
+            spinnerColorSlow.apply {
+                this.adapter = adapter
+                onItemSelectedListener = this@SettingsDialogFragment
             }
-            rbColorSecondary.setOnClickListener {
-                menuViewModel.saveTrackColor(R.color.secondary)
+            spinnerColorNormal.apply {
+                this.adapter = adapter
+                onItemSelectedListener = this@SettingsDialogFragment
             }
-            rbColorGrey.setOnClickListener {
-                menuViewModel.saveTrackColor(R.color.grey)
-            }
-            rbColorRed.setOnClickListener {
-                menuViewModel.saveTrackColor(R.color.red)
+            spinnerColorFast.apply {
+                this.adapter = adapter
+                onItemSelectedListener = this@SettingsDialogFragment
             }
 
             etTrackWidth.addTextChangedListener(widthTextChangeListener)
@@ -65,6 +83,31 @@ class SettingsDialogFragment : DialogFragment() {
         startObserving()
     }
 
+    override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+        with(binding) {
+            val key = when (parent?.id) {
+                spinnerColorSlow.id -> SettingsManager.POLYLINE_SLOW_COLOR_KEY
+                spinnerColorNormal.id -> SettingsManager.POLYLINE_NORMAL_COLOR_KEY
+                spinnerColorFast.id -> SettingsManager.POLYLINE_FAST_COLOR_KEY
+                else -> null
+            } ?: return
+            val color = getSelectedColor(position)
+
+            // Since we use the default spinner style the elements inside are MaterialTextViews
+            (view as? MaterialTextView)?.setTextColor(
+                ContextCompat.getColor(
+                    requireContext(),
+                    color
+                )
+            )
+            menuViewModel.saveTrackColor(key, color)
+        }
+    }
+
+    override fun onNothingSelected(parent: AdapterView<*>?) {
+        // Ignore
+    }
+
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
@@ -77,12 +120,9 @@ class SettingsDialogFragment : DialogFragment() {
         sessionViewModel.polylineState.observe(viewLifecycleOwner, {
             val state = it ?: return@observe
             with(binding) {
-                when (state.colorSlow) {
-                    R.color.secondary -> rbColorSecondary.isChecked = true
-                    R.color.red -> rbColorRed.isChecked = true
-                    R.color.grey -> rbColorGrey.isChecked = true
-                    else -> rbColorPrimary.isChecked = true
-                }
+                spinnerColorSlow.setSelection(getSelectedColorPosition(state.colorSlow))
+                spinnerColorNormal.setSelection(getSelectedColorPosition(state.colorNormal))
+                spinnerColorFast.setSelection(getSelectedColorPosition(state.colorFast))
 
                 etTrackWidth.setText(state.width.toString())
             }
@@ -106,4 +146,37 @@ class SettingsDialogFragment : DialogFragment() {
     private val widthTextChangeListener = UIUtils.getTextChangeListener {
         menuViewModel.saveTrackWidth(binding.etTrackWidth.text.toString())
     }
+
+    /**
+     * Get the position of the color in the dropdown.
+     *
+     * @param color Color resource ID.
+     */
+    private fun getSelectedColorPosition(color: Int) =
+        when (color) {
+            R.color.primary_light -> adapter.getPosition("Light blue")
+            R.color.primary -> adapter.getPosition("Blue")
+            R.color.secondary -> adapter.getPosition("Dark blue")
+            R.color.light_grey -> adapter.getPosition("Light grey")
+            R.color.grey -> adapter.getPosition("Grey")
+            R.color.dark_grey -> adapter.getPosition("Dark grey")
+            R.color.red -> adapter.getPosition("Red")
+            else -> 0
+        }
+
+    /**
+     * Get the color from the position in the dropdown.
+     *
+     * @param position Position of the color in the dropdown.
+     */
+    private fun getSelectedColor(position: Int) =
+        when (position) {
+            adapter.getPosition("Light blue") -> R.color.primary_light
+            adapter.getPosition("Dark blue") -> R.color.secondary
+            adapter.getPosition("Light grey") -> R.color.light_grey
+            adapter.getPosition("Grey") -> R.color.grey
+            adapter.getPosition("Dark grey") -> R.color.dark_grey
+            adapter.getPosition("Red") -> R.color.red
+            else -> R.color.primary
+        }
 }
