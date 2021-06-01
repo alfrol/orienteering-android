@@ -13,12 +13,14 @@ import android.view.animation.RotateAnimation
 import android.widget.TextView
 import androidx.activity.result.ActivityResultLauncher
 import androidx.annotation.DrawableRes
+import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Observer
 import androidx.lifecycle.lifecycleScope
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
+import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
@@ -155,6 +157,10 @@ class SessionFragment : Fragment(R.layout.fragment_session),
     override fun onResume() {
         super.onResume()
         binding.mapView.onResume()
+
+        if (isTracking) {
+            addAllPathPoints()
+        }
 
         if (isCompassEnabled) {
             compassListener.startListening()
@@ -387,8 +393,7 @@ class SessionFragment : Fragment(R.layout.fragment_session),
      */
     private val onClickSessionStart = View.OnClickListener {
         if (isTracking) {
-            startLocationService(C.ACTION_STOP_SERVICE)
-            startStopwatchService(C.ACTION_STOP_SERVICE)
+            showConfirmationDialog()
         } else {
             if (PermissionUtils.hasLocationPermission(requireContext())) {
                 startLocationService(C.ACTION_START_SERVICE)
@@ -592,20 +597,16 @@ class SessionFragment : Fragment(R.layout.fragment_session),
             addMarker(pathPoints.last(), R.drawable.ic_finish_marker)
         }
 
-        if (pathPoints.size < 2) {
-            return
-        }
-
         // Remove all previous polylines if present
         polylines.forEach { it.remove() }.also { polylines.clear() }
 
-        for (i in 1 until pathPoints.lastIndex) {
+        for (i in 1..pathPoints.lastIndex) {
             val lastPathPoint = pathPoints[i]
             val preLastPathPoint = pathPoints[i - 1]
             val latLngLast = LatLng(lastPathPoint.latitude, lastPathPoint.longitude)
             val latLngPreLast = LatLng(preLastPathPoint.latitude, preLastPathPoint.longitude)
             val color =
-                LocationUtils.getPolylineColor(polylineState, pathPoints[i], pathPoints[i - 1])
+                LocationUtils.getPolylineColor(polylineState, lastPathPoint, preLastPathPoint)
 
             val polylineOptions =
                 LocationUtils.getPolylineOptions(requireContext(), color, polylineState.width)
@@ -822,5 +823,22 @@ class SessionFragment : Fragment(R.layout.fragment_session),
                 BottomSheetBehavior.STATE_COLLAPSED
             }
         }
+    }
+
+    /**
+     * Show the confirmation dialog to ensure user does not accidentally stop the session.
+     */
+    private fun showConfirmationDialog() {
+        AlertDialog.Builder(requireContext())
+            .setTitle(R.string.title_stop_session)
+            .setMessage(R.string.text_stopping_confirmation)
+            .setPositiveButton(android.R.string.ok) { _, _ ->
+                startLocationService(C.ACTION_STOP_SERVICE)
+                startStopwatchService(C.ACTION_STOP_SERVICE)
+                findNavController().popBackStack()
+            }
+            .setNegativeButton(android.R.string.cancel) { _, _ -> }
+            .create()
+            .show()
     }
 }
