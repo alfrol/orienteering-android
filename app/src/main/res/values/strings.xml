@@ -34,6 +34,9 @@
     <string name="text_track_color_normal">&lt;= 2.7 m/s</string>
     <string name="text_track_color_fast">&gt; 2.7 m/s</string>
     <string name="text_track_width">Track width</string>
+    <string name="text_map_style">Map style</string>
+    <string name="text_map_style_normal">Normal</string>
+    <string name="text_map_style_satellite">Satellite</string>
     <string name="text_logout">Logout</string>
     <string name="text_delete_account">Delete account</string>
 

@@ -10,6 +10,7 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
+import com.google.android.gms.maps.GoogleMap
 import com.google.android.material.textview.MaterialTextView
 import dagger.hilt.android.AndroidEntryPoint
 import ee.taltech.alfrol.hw02.C
@@ -68,6 +69,13 @@ class SettingsDialogFragment : DialogFragment(), AdapterView.OnItemSelectedListe
             }
 
             etTrackWidth.addTextChangedListener(widthTextChangeListener)
+            rbgMapType.setOnCheckedChangeListener { _, id ->
+                val mapType = when(id) {
+                    R.id.rb_map_type_normal -> GoogleMap.MAP_TYPE_NORMAL
+                    else -> GoogleMap.MAP_TYPE_SATELLITE
+                }
+                sessionViewModel.changeMapType(mapType)
+            }
 
             btnLogout.setOnClickListener {
                 menuViewModel.logout()
@@ -130,6 +138,14 @@ class SettingsDialogFragment : DialogFragment(), AdapterView.OnItemSelectedListe
         menuViewModel.trackWidthState.observe(viewLifecycleOwner, {
             val state = it ?: return@observe
             state.error?.let { err -> binding.etTrackWidth.error = getString(err) }
+        })
+        sessionViewModel.mapType.observe(viewLifecycleOwner, {
+            val type = it ?: return@observe
+            val checked = when (type) {
+                GoogleMap.MAP_TYPE_NORMAL -> R.id.rb_map_type_normal
+                else -> R.id.rb_map_type_satellite
+            }
+            binding.rbgMapType.check(checked)
         })
     }
 
