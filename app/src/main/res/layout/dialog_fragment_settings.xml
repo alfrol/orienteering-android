@@ -154,20 +154,22 @@
         android:orientation="horizontal"
         app:layout_constraintBottom_toBottomOf="@+id/textView5"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toEndOf="@+id/textView"
+        app:layout_constraintStart_toEndOf="@+id/textView5"
         app:layout_constraintTop_toTopOf="@+id/textView5">
 
         <RadioButton
             android:id="@+id/rb_map_type_normal"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/text_map_style_normal" />
+            android:text="@string/text_map_style_normal"
+            android:textColor="@color/black" />
 
         <RadioButton
             android:id="@+id/rb_map_type_satellite"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/text_map_style_satellite" />
+            android:text="@string/text_map_style_satellite"
+            android:textColor="@color/black" />
     </RadioGroup>
 
     <androidx.appcompat.widget.AppCompatButton

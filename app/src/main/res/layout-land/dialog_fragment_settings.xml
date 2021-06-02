@@ -162,6 +162,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/text_map_style_normal"
+            android:textColor="@color/black"
             android:textSize="12sp" />
 
         <RadioButton
@@ -169,6 +170,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/text_map_style_satellite"
+            android:textColor="@color/black"
             android:textSize="12sp" />
     </RadioGroup>
 
