@@ -27,3 +27,17 @@ Google Maps component for map operations as well as other popular components and
 
 This application is not completely finished as it still has some known bugs and places I am not particularly happy about. The app is
 not published to the Marketpace as it was made for learning purposes.
+
+## Screenshots
+
+<img src="https://user-images.githubusercontent.com/43606916/131249736-7bd32c38-0d85-41d6-b9dc-3c53e3da5119.jpg" width="250" alt="Welcome screen" />
+<img src="https://user-images.githubusercontent.com/43606916/131249879-5f54b801-3497-411a-a048-8ade0596e985.jpg" width="250" alt="Login screen" />
+<img src="https://user-images.githubusercontent.com/43606916/131249889-0717699d-64a4-44ea-89af-da675909eb50.jpg" width="250" alt="Registration screen" />
+<img src="https://user-images.githubusercontent.com/43606916/131249980-72f107f8-0962-4e62-bdde-b6a8eed216b7.jpg" width="250" alt="Menu screen" />
+<img src="https://user-images.githubusercontent.com/43606916/131249982-47755d22-11ab-48b4-b1e1-f0b392a3f9fc.jpg" width="250" alt="Settings dialog" />
+<img src="https://user-images.githubusercontent.com/43606916/131249983-08982ae9-5092-4eb4-9bb8-287cb7311a04.jpg" width="250" alt="History screen" />
+<img src="https://user-images.githubusercontent.com/43606916/131249987-3fb83cf3-605b-45ae-b628-e68dcceca90e.jpg" width="250" alt="Main map screen" />
+<img src="https://user-images.githubusercontent.com/43606916/131249993-1957d30c-2400-4e66-a81c-f28e539d96c4.jpg" width="250" alt="Main map screen with expanded statistics" />
+<img src="https://user-images.githubusercontent.com/43606916/131249995-dfad5f1a-0b70-4e51-981b-56732a0dce4a.jpg" width="250" alt="Main map screen with collapsed statistics" />
+<img src="https://user-images.githubusercontent.com/43606916/131249997-1b2f7b72-9b4f-4150-84b8-28585bf8486a.jpg" width="250" alt="Main map screen with opened compass" />
+<img src="https://user-images.githubusercontent.com/43606916/131250000-859eceff-09fd-49f3-8a8f-43dd205fbb35.jpg" width="250" alt="Session from history screen" />
